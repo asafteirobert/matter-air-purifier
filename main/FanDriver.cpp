@@ -37,11 +37,6 @@ static uint8_t fanModeDefaultPercent(uint8_t fanMode)
     }
 }
 
-static bool isPercentInRange(uint8_t pct, uint8_t fanMode)
-{
-    return percentToFanMode(pct) == fanMode;
-}
-
 // ── Helpers to update single attributes ────────
 
 static void updateAttrU8(uint16_t endpoint, uint32_t cluster, uint32_t attr, uint8_t newVal)
