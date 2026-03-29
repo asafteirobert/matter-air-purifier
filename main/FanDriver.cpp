@@ -120,7 +120,7 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
 
     const uint32_t FC = FanControl::Id;
 
-    if (updatingAttibutesInCallback)
+    if (this->updatingAttibutesInCallback)
         return ESP_OK;
 
     if (attribute_id == FanControl::Attributes::FanMode::Id)
@@ -132,14 +132,14 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
         uint8_t newMode = val->val.u8;
 
         ESP_LOGI(TAG, "FanMode -> %u", newMode);
-        fanPercentSetting = fanModeDefaultPercent(newMode);
+        this->fanPercentSetting = fanModeDefaultPercent(newMode);
 
-        updatingAttibutesInCallback = true;
-        updateAttrNullableU8(fanEndpointId, FC, FanControl::Attributes::PercentSetting::Id, fanPercentSetting);
-        updateAttrNullableU8(fanEndpointId, FC, FanControl::Attributes::SpeedSetting::Id, fanPercentSetting);
-        updateAttrU8(fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, fanPercentSetting);
-        updateAttrU8(fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, fanPercentSetting);
-        updatingAttibutesInCallback = false;
+        this->updatingAttibutesInCallback = true;
+        updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::PercentSetting::Id, this->fanPercentSetting);
+        updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedSetting::Id, this->fanPercentSetting);
+        updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, this->fanPercentSetting);
+        updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
+        this->updatingAttibutesInCallback = false;
     }
     else if (attribute_id == FanControl::Attributes::PercentSetting::Id)
     {
@@ -148,15 +148,15 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
             return ESP_OK;   // null write → SHALL NOT change (spec §4.4.6.3)
 
         ESP_LOGI(TAG, "PercentSetting -> %u", newPct);
-        fanPercentSetting = newPct;
+        this->fanPercentSetting = newPct;
 
-        updatingAttibutesInCallback = true;
+        this->updatingAttibutesInCallback = true;
         // Map percent to FanMode and keep SpeedSetting in sync
-        updateAttrEnum8(fanEndpointId, FC, FanControl::Attributes::FanMode::Id, percentToFanMode(fanPercentSetting));
-        updateAttrNullableU8(fanEndpointId, FC, FanControl::Attributes::SpeedSetting::Id, fanPercentSetting);
-        updateAttrU8(fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, fanPercentSetting);
-        updateAttrU8(fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, fanPercentSetting);
-        updatingAttibutesInCallback = false;
+        updateAttrEnum8(this->fanEndpointId, FC, FanControl::Attributes::FanMode::Id, percentToFanMode(this->fanPercentSetting));
+        updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedSetting::Id, this->fanPercentSetting);
+        updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, this->fanPercentSetting);
+        updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
+        this->updatingAttibutesInCallback = false;
     }
     else if (attribute_id == FanControl::Attributes::SpeedSetting::Id)
     {
@@ -165,22 +165,22 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
             return ESP_OK;   // null write → SHALL NOT change (spec §4.4.6.6)
 
         ESP_LOGI(TAG, "SpeedSetting -> %u", newSpeed);
-        fanPercentSetting = newSpeed;
+        this->fanPercentSetting = newSpeed;
 
-        updatingAttibutesInCallback = true;
+        this->updatingAttibutesInCallback = true;
         // Map percent to FanMode and keep SpeedSetting in sync
-        updateAttrEnum8(fanEndpointId, FC, FanControl::Attributes::FanMode::Id, percentToFanMode(fanPercentSetting));
-        updateAttrNullableU8(fanEndpointId, FC, FanControl::Attributes::PercentSetting::Id, fanPercentSetting);
-        updateAttrU8(fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, fanPercentSetting);
-        updateAttrU8(fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, fanPercentSetting);
-        updatingAttibutesInCallback = false;
+        updateAttrEnum8(this->fanEndpointId, FC, FanControl::Attributes::FanMode::Id, percentToFanMode(this->fanPercentSetting));
+        updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::PercentSetting::Id, this->fanPercentSetting);
+        updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, this->fanPercentSetting);
+        updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
+        this->updatingAttibutesInCallback = false;
     }
     else
     {
         return ESP_OK;  // Not a handled attribute
     }
 
-    applyFanState();
+    this->applyFanState();
     return ESP_OK;
 }
 
@@ -189,7 +189,7 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
 void FanDriver::applyFanState()
 {
     using namespace chip::app::Clusters;
-    setDutyCycle(fanPercentSetting);
+    this->setDutyCycle(this->fanPercentSetting);
 }
 
 // ── PWM helper ────────────────────────────────────────────────────────────────

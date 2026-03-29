@@ -26,9 +26,9 @@ void ButtonDriver::init(uint16_t fanEndpointId)
     }
 
     esp_err_t err = ESP_OK;
-    err |= iot_button_register_cb(handle, BUTTON_SINGLE_CLICK, NULL, buttonClickCallback, this);
-    err |= iot_button_register_cb(handle, BUTTON_LONG_PRESS_HOLD, NULL, buttonLongPressHoldCallback, this);
-    err |= iot_button_register_cb(handle, BUTTON_PRESS_UP, NULL, buttonPressUpCallback, this);
+    err |= iot_button_register_cb(this->handle, BUTTON_SINGLE_CLICK, NULL, buttonClickCallback, this);
+    err |= iot_button_register_cb(this->handle, BUTTON_LONG_PRESS_HOLD, NULL, buttonLongPressHoldCallback, this);
+    err |= iot_button_register_cb(this->handle, BUTTON_PRESS_UP, NULL, buttonPressUpCallback, this);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to set button callbacks");
