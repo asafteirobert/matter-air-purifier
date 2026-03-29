@@ -6,11 +6,6 @@
 // ── Range mapping for kOffLowMedHigh (Matter spec §4.4.6.3.1 / §4.4.6.6.1) ───
 //
 //  PercentSetting / SpeedSetting (SpeedMax=100, so both are identical values):
-//    0        → Off
-//    1 – 33   → Low
-//    34 – 66  → Medium
-//    67 – 100 → High
-//
 // The exact breakpoints are implementation-defined; the spec's own illustrative
 // example uses equal thirds, which we adopt here.
 
