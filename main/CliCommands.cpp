@@ -1,3 +1,4 @@
+#include "sdkconfig.h"
 #include "CliCommands.hpp"
 
 #if CONFIG_ENABLE_CHIP_SHELL

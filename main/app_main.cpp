@@ -199,23 +199,29 @@ extern "C" void app_main()
     node_t *node = node::create(&node_config, app_attribute_update_cb, app_identification_cb);
     ABORT_APP_ON_FAILURE(node != nullptr, ESP_LOGE(TAG, "Failed to create Matter node"));
 
-    fan::config_t fan_config;
+    air_purifier::config_t air_purifier_config;
+    air_purifier_config.fan_control.fan_mode          = (uint8_t)FanControl::FanModeEnum::kOff;
+    air_purifier_config.fan_control.fan_mode_sequence = (uint8_t)FanControl::FanModeSequenceEnum::kOffLowMedHigh;
 
-    // FanControl cluster
-
-    //TODO 
-    fan_config.fan_control.fan_mode          = (uint8_t)FanControl::FanModeEnum::kOff;
-    fan_config.fan_control.fan_mode_sequence = (uint8_t)FanControl::FanModeSequenceEnum::kOffHigh;
-
-     endpoint_t *fan_endpoint = fan::create(node, &fan_config, ENDPOINT_FLAG_NONE, nullptr);
-    if (fan_endpoint == nullptr) 
+    endpoint_t *air_purifier_endpoint = air_purifier::create(node, &air_purifier_config, ENDPOINT_FLAG_NONE, nullptr);
+    if (air_purifier_endpoint == nullptr)
     {
-        ESP_LOGE(TAG, "Failed to create fan endpoint");
+        ESP_LOGE(TAG, "Failed to create air purifier endpoint");
         return;
     }
 
-    uint16_t fanEndpointId = endpoint::get_id(fan_endpoint);
-    ESP_LOGI(TAG, "Fan endpoint created with endpoint id: %u", fanEndpointId);
+    // Enable the MultiSpeed feature (required by Home Assistant for percentage control).
+    // SpeedMax=100 makes SpeedSetting a direct 0-100 percentage.
+    cluster_t *fan_cluster = cluster::get(air_purifier_endpoint, chip::app::Clusters::FanControl::Id);
+    cluster::fan_control::feature::multi_speed::config_t multispeed_config;
+    multispeed_config.speed_max     = 100;
+    multispeed_config.speed_setting = nullable<uint8_t>();   // null – no speed set yet
+    multispeed_config.speed_current = 0;
+    ABORT_APP_ON_FAILURE(cluster::fan_control::feature::multi_speed::add(fan_cluster, &multispeed_config) == ESP_OK,
+                         ESP_LOGE(TAG, "Failed to add MultiSpeed feature"));
+
+    uint16_t fanEndpointId = endpoint::get_id(air_purifier_endpoint);
+    ESP_LOGI(TAG, "Air purifier endpoint created with endpoint id: %u", fanEndpointId);
 
     // Initialize drivers
     buttonDriver.init(fanEndpointId);
@@ -267,7 +273,7 @@ extern "C" void app_main()
 #if CONFIG_OPENTHREAD_CLI
     esp_matter::console::otcli_register_commands();
 #endif
-    cli_register_commands(servoDriver);
+    cli_register_commands();
     esp_matter::console::init();
 #endif
 
