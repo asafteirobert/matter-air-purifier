@@ -11,7 +11,16 @@
 #define PANEL_BUTTON_GPIO     GPIO_NUM_23
 
 /** PC fan PWM */
-#define FAN_PWM_GPIO     GPIO_NUM_2
+#define FAN_PWM_GPIO     GPIO_NUM_18
+
+/** PC fan 1 tachometer */
+#define FAN1_TACH_GPIO     GPIO_NUM_20
+
+/** PC fan 2 tachometer */
+#define FAN2_TACH_GPIO     GPIO_NUM_19
+
+/** PC fan 3 tachometer */
+#define FAN3_TACH_GPIO     GPIO_NUM_17
 
 /** RF switch power – must be driven LOW to enable antenna switching */
 #define ANTENNA_ENABLE_GPIO     GPIO_NUM_3

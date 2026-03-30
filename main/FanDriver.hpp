@@ -4,6 +4,8 @@
 #include <esp_matter.h>
 #include "driver/gpio.h"
 #include "driver/ledc.h"
+#include "driver/pulse_cnt.h"
+#include "esp_timer.h"
 #include "Constants.hpp"
 
 class FanDriver
@@ -29,8 +31,13 @@ public:
 
 private:
     void setDutyCycle(uint8_t percent);
+    void readAndLogRpm();
+    static void tachTimerCb(void *arg);
 
     uint16_t fanEndpointId  = 0;
     uint8_t  fanPercentSetting = 0;    // 0–100
     bool updatingAttibutesInCallback = false;
+
+    pcnt_unit_handle_t tachUnits[3] = {};
+    esp_timer_handle_t tachTimer    = nullptr;
 };

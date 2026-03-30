@@ -81,6 +81,68 @@ void FanDriver::init(uint16_t fanEndpointId)
     ESP_ERROR_CHECK(ledc_channel_config(&channel_cfg));
 
     ESP_LOGI(TAG, "Fan driver initialised – PWM on GPIO %d at %lu Hz", FAN_PWM_GPIO, PWM_FREQ_HZ);
+
+    // Configure PCNT units to count tachometer pulses (one per fan)
+    const gpio_num_t tachGpios[3] = { FAN1_TACH_GPIO, FAN2_TACH_GPIO, FAN3_TACH_GPIO };
+    for (int i = 0; i < 3; i++)
+    {
+        const pcnt_unit_config_t unit_cfg = {
+            .low_limit  = -1,
+            .high_limit = 32767,
+        };
+        ESP_ERROR_CHECK(pcnt_new_unit(&unit_cfg, &this->tachUnits[i]));
+
+        const pcnt_chan_config_t chan_cfg = {
+            .edge_gpio_num  = tachGpios[i],
+            .level_gpio_num = -1,
+        };
+        pcnt_channel_handle_t chan = nullptr;
+        ESP_ERROR_CHECK(pcnt_new_channel(this->tachUnits[i], &chan_cfg, &chan));
+        // Count on rising edge only
+        ESP_ERROR_CHECK(pcnt_channel_set_edge_action(chan,
+            PCNT_CHANNEL_EDGE_ACTION_INCREASE,
+            PCNT_CHANNEL_EDGE_ACTION_HOLD));
+
+        // Reject glitch pulses shorter than 1 µs (noise from PWM switching)
+        const pcnt_glitch_filter_config_t filter_cfg = {
+            .max_glitch_ns = 1000,
+        };
+        ESP_ERROR_CHECK(pcnt_unit_set_glitch_filter(this->tachUnits[i], &filter_cfg));
+
+        ESP_ERROR_CHECK(pcnt_unit_enable(this->tachUnits[i]));
+        ESP_ERROR_CHECK(pcnt_unit_clear_count(this->tachUnits[i]));
+        ESP_ERROR_CHECK(pcnt_unit_start(this->tachUnits[i]));
+    }
+
+    // 1-second periodic timer to sample pulse counts and log RPM
+    const esp_timer_create_args_t timer_args = {
+        .callback = &FanDriver::tachTimerCb,
+        .arg      = this,
+        .name     = "tach_timer",
+    };
+    ESP_ERROR_CHECK(esp_timer_create(&timer_args, &this->tachTimer));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(this->tachTimer, 1000000 /* µs */));
+}
+
+// ── Tachometer sampling ───────────────────────────────────────────────────────
+
+void FanDriver::tachTimerCb(void *arg)
+{
+    static_cast<FanDriver *>(arg)->readAndLogRpm();
+}
+
+void FanDriver::readAndLogRpm()
+{
+    int counts[3];
+    for (int i = 0; i < 3; i++)
+    {
+        pcnt_unit_get_count(this->tachUnits[i], &counts[i]);
+        pcnt_unit_clear_count(this->tachUnits[i]);
+    }
+    // 4-pin fans emit 2 pulses per revolution; sampled over 1 second.
+    // RPM = (pulses / 2) * 60 = pulses * 30
+    ESP_LOGI(TAG, "Fan RPM – fan1: %d  fan2: %d  fan3: %d",
+             counts[0] * 30, counts[1] * 30, counts[2] * 30);
 }
 
 // ── Attribute update callback ─────────────────────────────────────────────────
