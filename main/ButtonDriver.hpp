@@ -12,7 +12,9 @@ class ButtonDriver
         static void buttonClickCallback(void* handle, void* userData);
         static void buttonLongPressHoldCallback(void *handle, void *userData);
         static void buttonPressUpCallback(void *handle, void *userData);
-        button_handle_t handle = nullptr;
+
+        button_handle_t boardButtonHandle = nullptr;
+        button_handle_t panelButtonHandle = nullptr;
         uint16_t fanEndpointId = 0;
         bool performFactoryReset = false;
 };
