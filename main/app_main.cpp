@@ -12,6 +12,7 @@
 
 #include "ButtonDriver.hpp"
 #include "FanDriver.hpp"
+#include "DisplayDriver.hpp"
 
 #include "Utils.hpp"
 
@@ -43,6 +44,7 @@ constexpr auto k_timeout_seconds = 300;
 
 ButtonDriver buttonDriver;
 FanDriver fanDriver;
+DisplayDriver displayDriver;
 
 #ifdef CONFIG_ENABLE_SET_CERT_DECLARATION_API
 extern const uint8_t cd_start[] asm("_binary_certification_declaration_der_start");
@@ -192,6 +194,9 @@ extern "C" void app_main()
     gpio_set_direction(ANTENNA_CONFIG_GPIO, GPIO_MODE_OUTPUT);
     gpio_set_level(ANTENNA_CONFIG_GPIO, 0);
 
+    displayDriver.init();
+    displayDriver.drawSplashScreen();
+
     // Create a Matter node and add the mandatory Root Node device type on endpoint 0
     node::config_t node_config;
 
@@ -278,9 +283,11 @@ extern "C" void app_main()
 #endif
 
     ESP_LOGI(TAG, "Init finished");
-
+    vTaskDelay(3000 / portTICK_PERIOD_MS);
     while (true) 
     {
-        vTaskDelay(10000 / portTICK_PERIOD_MS);
+        displayDriver.drawAnimation();
+        //vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(2);
     }
 }

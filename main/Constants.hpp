@@ -8,7 +8,7 @@
 #define BOARD_BUTTON_GPIO     GPIO_NUM_9
 
 /** interaction button (active-LOW, internal pull-up) */
-#define PANEL_BUTTON_GPIO     GPIO_NUM_20
+#define PANEL_BUTTON_GPIO     GPIO_NUM_23
 
 /** PC fan PWM */
 #define FAN_PWM_GPIO     GPIO_NUM_2
@@ -18,6 +18,12 @@
 
 /** RF switch select – LOW = internal ceramic antenna, HIGH = external antenna */
 #define ANTENNA_CONFIG_GPIO GPIO_NUM_14
+
+/** OLED screen SDA Pin*/
+#define OLED_SDA_GPIO GPIO_NUM_22
+
+/** OLED screen SCL Pin*/
+#define OLED_SCL_GPIO GPIO_NUM_21
 
 
 
