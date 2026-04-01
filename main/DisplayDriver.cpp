@@ -250,8 +250,6 @@ void DisplayDriver::drawIdentifyScreen()
 
 void DisplayDriver::drawFactoryResetScreen()
 {
-    TickType_t now = xTaskGetTickCount();
-
     if (this->factoryResetScreenDirty)
     {
         u8g2_ClearBuffer(&this->display);
