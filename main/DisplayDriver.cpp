@@ -353,33 +353,3 @@ void DisplayDriver::screenUpdateTask(void *arg)
     }
 }
 
-void DisplayDriver::sendPartialBuffer(u8g2_t *u8g2,
-                                      uint8_t page_start, uint8_t page_end,
-                                      uint8_t col_start,  uint8_t col_end)
-{
-    u8x8_t *u8x8 = &u8g2->u8x8;
-    uint16_t width = col_end - col_start + 1;
-
-    // Single transaction — one alloc, one free
-    u8x8_cad_StartTransfer(u8x8);
-
-    // Set column address range
-    u8x8_cad_SendCmd(u8x8, 0x21);
-    u8x8_cad_SendArg(u8x8, col_start);
-    u8x8_cad_SendArg(u8x8, col_end);
-
-    // Set page address range
-    u8x8_cad_SendCmd(u8x8, 0x22);
-    u8x8_cad_SendArg(u8x8, page_start);
-    u8x8_cad_SendArg(u8x8, page_end);
-
-    // Send all pages without re-opening the command link
-    for (uint8_t page = page_start; page <= page_end; page++) {
-        uint8_t *buf = u8g2_GetBufferPtr(u8g2)
-                       + (page * u8g2_GetBufferTileWidth(u8g2) * 8)
-                       + col_start;
-        u8x8_cad_SendData(u8x8, width, buf);
-    }
-
-    u8x8_cad_EndTransfer(u8x8);  // executes and frees the command link once
-}

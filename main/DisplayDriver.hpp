@@ -35,7 +35,6 @@ class DisplayDriver
 
     private:
         static void screenUpdateTask(void *arg);
-        void sendPartialBuffer(u8g2_t *u8g2, uint8_t page_start, uint8_t page_end, uint8_t col_start, uint8_t col_end);
         void drawMainScreen();
         void drawMainScreenSignalBars();
         void drawMainScreenRPMCount();
