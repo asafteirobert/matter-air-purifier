@@ -5,9 +5,10 @@
 #include <esp_log.h>
 #include <esp_matter.h>
 
-void ButtonDriver::init(uint16_t fanEndpointId)
+void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
 {
     this->fanEndpointId = fanEndpointId;
+    this->displayDriver = &displayDriver;
     const button_config_t buttonConfig = 
     {
         .long_press_time  = 5000,   // 5 s - factory reset
@@ -79,7 +80,7 @@ void ButtonDriver::buttonClickCallback(void *handle, void *userData)
     val.val.u8 = (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kOff) ? (uint8_t)FanControl::FanModeEnum::kLow
                : (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kLow) ? (uint8_t)FanControl::FanModeEnum::kMedium
                : (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kMedium) ? (uint8_t)FanControl::FanModeEnum::kHigh
-                 : (uint8_t)FanControl::FanModeEnum::kOff;
+               : (uint8_t)FanControl::FanModeEnum::kOff;
     esp_matter::attribute::update(endpointId, clusterId, attributeId, &val);
 }
 

@@ -229,8 +229,8 @@ extern "C" void app_main()
     ESP_LOGI(TAG, "Air purifier endpoint created with endpoint id: %u", fanEndpointId);
 
     // Initialize drivers
-    buttonDriver.init(fanEndpointId);
-    fanDriver.init(fanEndpointId);
+    buttonDriver.init(fanEndpointId, displayDriver);
+    fanDriver.init(fanEndpointId, displayDriver);
 
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD && CHIP_DEVICE_CONFIG_ENABLE_WIFI_STATION
     // Enable secondary network interface
@@ -286,6 +286,7 @@ extern "C" void app_main()
     vTaskDelay(3000 / portTICK_PERIOD_MS);
     while (true) 
     {
+        displayDriver.drawMainScreen();
         displayDriver.drawAnimation();
         //vTaskDelay(100 / portTICK_PERIOD_MS);
         vTaskDelay(2);

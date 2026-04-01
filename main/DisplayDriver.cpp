@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <esp_log.h>
 #include "DisplayDriver.hpp"
 #include "DisplayIcons.hpp"
@@ -25,6 +26,50 @@ void DisplayDriver::init()
     u8g2_ClearBuffer(&this->display);
     u8g2_SendBuffer(&this->display);
     ESP_LOGI(TAG, "u8g2 display initialized");
+    this->setFanPercentSetting(0);
+}
+
+void DisplayDriver::setFanPercentSetting(uint8_t newSetting)
+{
+    if (this->fanPercentSetting == newSetting)
+        return;
+    this->fanPercentSetting = newSetting;
+    // set the animation speed based on fanPercentSetting
+    static constexpr uint8_t animationTableCount = 8;
+    static uint8_t animationFrameSpeeds[animationTableCount] = {0, 1,  1,  2,  2,  3,  3,  3};
+    static uint8_t animationTaskDelays[animationTableCount] =  {8, 4,  3,  4,  3,  4,  3,  2};
+    static uint8_t animationIntervals[animationTableCount] =   {0, 10, 20, 30, 40, 60, 90, 100};
+    uint8_t animationTableIndex = animationTableCount - 1;
+    for (uint8_t i = 0; i < animationTableCount; i++)
+    {
+        if (animationIntervals[i] >= this->fanPercentSetting)
+        {
+            animationTableIndex = i;
+            break;
+        }
+    }
+    this->animationFrameSpeed = animationFrameSpeeds[animationTableIndex];
+    this->animationTaskDelay = animationTaskDelays[animationTableIndex];
+    
+    this->mainScreenDirty = true;
+}
+
+void DisplayDriver::setRPM(uint32_t fan1RPM, uint32_t fan2RPM, uint32_t fan3RPM)
+{
+    this->fan1RPM = fan1RPM;
+    this->fan2RPM = fan2RPM;
+    this->fan3RPM = fan3RPM;
+    uint32_t minRPM = std::min({this->fan1RPM, this->fan2RPM, this->fan3RPM});
+    if (this->mainScreenRPM != minRPM)
+    {
+        this->mainScreenRPM = minRPM;
+        this->mainScreenRPMCountDirty = true;
+    }
+}
+
+void DisplayDriver::setActiveScreen(Screen screen)
+{
+    this->activeScreen = screen;
 }
 
 void DisplayDriver::drawSplashScreen()
@@ -46,38 +91,103 @@ void DisplayDriver::drawSplashScreen()
 
 void DisplayDriver::drawMainScreen()
 {
-    u8g2_ClearBuffer(&this->display);
-    //progress bar
-    u8g2_DrawFrame(&this->display, 34, 18, 69, 14);
-    u8g2_DrawBox(&this->display, 35, 19, 17, 12);
+    if (this->mainScreenDirty)
+    {
+        // clear only my area, leave animation
+        u8g2_SetDrawColor(&this->display, 0);
+        u8g2_DrawBox(&this->display, 33, 0, 128 - 33, 32);
+        u8g2_SetDrawColor(&this->display, 1);
 
-    //percent
+        //progress bar
+        u8g2_DrawFrame(&this->display, 34, 18, 69, 14);
+        uint8_t barWidth = this->fanPercentSetting * 67 / 100;
+        u8g2_DrawBox(&this->display, 35, 19, barWidth, 12);
+
+        //percent
+        u8g2_SetFont(&this->display, u8g2_font_6x13_tr);
+        char s[5];
+        snprintf(s, sizeof(s), "%d%%", this->fanPercentSetting);
+        u8g2_DrawStr(&this->display, 127 - u8g2_GetStrWidth(&this->display, s), 30, s);
+
+        //signal
+        this->drawMainScreenSignalBars();
+
+        //RPM
+        this->drawMainScreenRPMCount();
+        u8g2_DrawStr(&this->display, 63, 13, "RPM");
+
+        // update only right area and leave animation
+        u8g2_UpdateDisplayArea(&this->display, 5, 0, 11, 4);
+        u8g2_SendBuffer(&this->display); 
+        this->mainScreenDirty = false;
+    }
+    else
+    {
+        if (this->mainScreenRPMCountDirty)
+        {
+            this->drawMainScreenRPMCount();
+            this->mainScreenRPMCountDirty = false;
+        }
+        if (this->mainScreenSignalBarsDirty)
+        {
+            this->drawMainScreenSignalBars();
+            this->mainScreenSignalBarsDirty = false;
+        }
+    }
+}
+
+void DisplayDriver::drawMainScreenSignalBars()
+{
+    if (this->activeScreen != Screen::Main)
+        return;
+    for (int i = 0; i < 4; i++) 
+    {
+        bool filled = this->mainScreenActiveSignalBars >= i + 1;
+        (filled ? u8g2_DrawBox : u8g2_DrawFrame)(&this->display, 112 + i * 4, 12 - i * 4, 3, 4 * i + 3);
+    }
+    u8g2_UpdateDisplayArea(&this->display, 14, 0, 2, 2);
+}
+
+void DisplayDriver::drawMainScreenRPMCount()
+{
+    if (this->activeScreen != Screen::Main)
+        return;
+    u8g2_SetDrawColor(&this->display, 0);
+    u8g2_DrawBox(&this->display, 37, 0, 21, 13);
+    u8g2_SetDrawColor(&this->display, 1);
     u8g2_SetFont(&this->display, u8g2_font_6x13_tr);
-    u8g2_DrawStr(&this->display, 110, 30, "23%");
-
-    //signal
-    u8g2_DrawFrame(&this->display, 112, 12, 3, 3);
-    u8g2_DrawFrame(&this->display, 116, 8, 3, 7);
-    u8g2_DrawFrame(&this->display, 120, 4, 3, 11);
-    u8g2_DrawFrame(&this->display, 124, 0, 3, 15);
-
-
-    //RPM
-    u8g2_DrawStr(&this->display, 37, 13, "9999");
-    u8g2_DrawStr(&this->display, 63, 13, "RPM");
-
-    u8g2_SendBuffer(&this->display); 
+    char s[5];
+    snprintf(s, sizeof(s), "%4lu", (unsigned long)this->mainScreenRPM);
+    u8g2_DrawStr(&this->display, 37, 13, s);
+    u8g2_UpdateDisplayArea(&this->display, 4, 0, 4, 2);
 }
 
 void DisplayDriver::drawIdentifyScreen()
 {
     u8g2_ClearBuffer(&this->display);
 
-    u8g2_DrawXBM(&this->display, 0, 0, 32, 32, warningIcon);
+    u8g2_DrawXBM(&this->display, 0, 0, 32, 32, WARNING_ICON);
     u8g2_SetFont(&this->display, u8g2_font_t0_17b_tr);
     u8g2_DrawStr(&this->display, 44, 23, "Identify");
 
-    //Todo, invert buffer
+    //Todo, invert buffer every second
+
+    u8g2_SendBuffer(&this->display); 
+}
+
+void DisplayDriver::drawFactoryResetScreen()
+{
+    u8g2_ClearBuffer(&this->display);
+
+    u8g2_DrawXBM(&this->display, 0, 0, 32, 32, WARNING_ICON);
+    u8g2_SetFont(&this->display, u8g2_font_6x13_tr);
+    u8g2_DrawStr(&this->display, 40, 14, "Factory Reset");
+
+    u8g2_SetFont(&this->display, u8g2_font_4x6_tr);
+    u8g2_DrawStr(&this->display, 35, 25, "Factory reset triggered.");
+    u8g2_DrawStr(&this->display, 35, 31, "Release to start reset.");
+
+    //Todo, invert buffer every second
 
     u8g2_SendBuffer(&this->display); 
 }
@@ -97,35 +207,12 @@ void DisplayDriver::drawInfoScreen()
 
 void DisplayDriver::drawAnimation()
 {
-    /* 
-    Animation speed table
-    Frames	Delay	Interval start	interval end
-    1	    4	    0	             0.1
-    1	    3	    0.1	             0.2
-    2	    4	    0.2	             0.3
-    2	    3	    0.3	             0.4
-    3	    4	    0.4	             0.6
-    3	    3	    0.6	             0.9
-    3	    2	    0.9	             1
-
-    Frames = how many frames to increment per draw
-    Delay = task delay
-    Interval = when to use this speed based on speed percent.
-    */
-
-    static int frame = 0;
-    // Set draw color to 0 (black = erase)
-    //u8g2_SetDrawColor(&this->display, 0);
-    //u8g2_DrawBox(&this->display, 0, 0, 32, 32);
-    //u8g2_SetDrawColor(&this->display, 1);
-
-    //u8g2_ClearBuffer(&this->display);
-    u8g2_DrawXBM(&this->display, 0, 0, 32, 32, fanAanimation[frame]);
-    frame = frame + 3;
-    if (frame >= 18)
-        frame = 0;
-    //this->sendPartialBuffer(&this->display, 0, 3, 0, 31);
-    //u8g2_SendBuffer(&this->display);
+    if (this->animationFrameSpeed == 0)
+        return;
+    u8g2_DrawXBM(&this->display, 0, 0, 32, 32, FAN_ANIMATION[this->currentAnimationFrame]);
+    this->currentAnimationFrame = this->currentAnimationFrame + this->animationFrameSpeed;
+    if (this->currentAnimationFrame >= FAN_ANIMATION_FRAMES_COUNT)
+        this->currentAnimationFrame = this->currentAnimationFrame % FAN_ANIMATION_FRAMES_COUNT;
     u8g2_UpdateDisplayArea(&this->display, 0, 0, 4, 4);
 }
 

@@ -7,6 +7,7 @@
 #include "driver/pulse_cnt.h"
 #include "esp_timer.h"
 #include "Constants.hpp"
+#include "DisplayDriver.hpp"
 
 class FanDriver
 {
@@ -19,9 +20,10 @@ class FanDriver
     static constexpr ledc_timer_bit_t PWM_RESOLUTION = LEDC_TIMER_10_BIT;
     static constexpr uint32_t         PWM_FREQ_HZ    = 25000;
     static constexpr uint32_t         PWM_MAX_DUTY   = (1u << 10) - 1;  // 1023
+    static constexpr uint32_t         RPM_READ_INTERVAL_MS = 2000;
 
 public:
-    void init(uint16_t fanEndpointId);
+    void init(uint16_t fanEndpointId, DisplayDriver& displayDriver);
     esp_err_t attributeUpdate(esp_matter::attribute::callback_type_t type,
                               uint16_t endpoint_id,
                               uint32_t cluster_id,
@@ -30,11 +32,12 @@ public:
     void applyFanState();
 
 private:
-    void setDutyCycle(uint8_t percent);
-    void readAndLogRpm();
+    void setFanPercentSetting(uint8_t newSetting);
+    void readAndSendRpm();
     static void tachTimerCb(void *arg);
 
     uint16_t fanEndpointId  = 0;
+    DisplayDriver* displayDriver = nullptr;
     uint8_t  fanPercentSetting = 0;    // 0–100
     bool updatingAttibutesInCallback = false;
 

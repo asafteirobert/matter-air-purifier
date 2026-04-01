@@ -54,9 +54,10 @@ static void updateAttrNullableU8(uint16_t endpoint, uint32_t cluster, uint32_t a
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-void FanDriver::init(uint16_t fanEndpointId)
+void FanDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
 {
     this->fanEndpointId = fanEndpointId;
+    this->displayDriver = &displayDriver;
 
     // Configure LEDC timer for 25 kHz (standard 4-pin PC fan PWM frequency)
     const ledc_timer_config_t timer_cfg = {
@@ -125,24 +126,33 @@ void FanDriver::init(uint16_t fanEndpointId)
         ESP_ERROR_CHECK(pcnt_unit_start(this->tachUnits[i]));
     }
 
-    // 1-second periodic timer to sample pulse counts and log RPM
+    // 2-second periodic timer to sample pulse counts and log RPM
     const esp_timer_create_args_t timer_args = {
         .callback = &FanDriver::tachTimerCb,
         .arg      = this,
         .name     = "tach_timer",
     };
     ESP_ERROR_CHECK(esp_timer_create(&timer_args, &this->tachTimer));
-    ESP_ERROR_CHECK(esp_timer_start_periodic(this->tachTimer, 1000000 /* µs */));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(this->tachTimer, RPM_READ_INTERVAL_MS * 1000 /* µs */));
 }
 
 // ── Tachometer sampling ───────────────────────────────────────────────────────
 
 void FanDriver::tachTimerCb(void *arg)
 {
-    static_cast<FanDriver *>(arg)->readAndLogRpm();
+    static_cast<FanDriver *>(arg)->readAndSendRpm();
 }
 
-void FanDriver::readAndLogRpm()
+void FanDriver::setFanPercentSetting(uint8_t newSetting)
+{
+    if (newSetting > 100)
+        newSetting = 100;
+
+    this->fanPercentSetting = newSetting;
+    this->displayDriver->setFanPercentSetting(newSetting);
+}
+
+void FanDriver::readAndSendRpm()
 {
     int counts[3];
     for (int i = 0; i < 3; i++)
@@ -152,8 +162,7 @@ void FanDriver::readAndLogRpm()
     }
     // 4-pin fans emit 2 pulses per revolution; sampled over 1 second.
     // RPM = (pulses / 2) * 60 = pulses * 30
-    ESP_LOGI(TAG, "Fan RPM – fan1: %d  fan2: %d  fan3: %d",
-             counts[0] * 30, counts[1] * 30, counts[2] * 30);
+    this->displayDriver->setRPM(counts[0] * 30 * 1000 / RPM_READ_INTERVAL_MS, counts[1] * 30 * 1000 / RPM_READ_INTERVAL_MS, counts[2] * 30 * 1000 / RPM_READ_INTERVAL_MS);
 }
 
 // ── Attribute update callback ─────────────────────────────────────────────────
@@ -195,7 +204,7 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
         uint8_t newMode = val->val.u8;
 
         ESP_LOGI(TAG, "FanMode -> %u", newMode);
-        this->fanPercentSetting = fanModeDefaultPercent(newMode);
+        this->setFanPercentSetting(fanModeDefaultPercent(newMode));
 
         this->updatingAttibutesInCallback = true;
         updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::PercentSetting::Id, this->fanPercentSetting);
@@ -211,7 +220,7 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
             return ESP_OK;   // null write → SHALL NOT change (spec §4.4.6.3)
 
         ESP_LOGI(TAG, "PercentSetting -> %u", newPct);
-        this->fanPercentSetting = newPct;
+        this->setFanPercentSetting(newPct);
 
         this->updatingAttibutesInCallback = true;
         // Map percent to FanMode and keep SpeedSetting in sync
@@ -228,7 +237,7 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
             return ESP_OK;   // null write → SHALL NOT change (spec §4.4.6.6)
 
         ESP_LOGI(TAG, "SpeedSetting -> %u", newSpeed);
-        this->fanPercentSetting = newSpeed;
+        this->setFanPercentSetting(newSpeed);
 
         this->updatingAttibutesInCallback = true;
         // Map percent to FanMode and keep SpeedSetting in sync
@@ -251,21 +260,11 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
 
 void FanDriver::applyFanState()
 {
-    using namespace chip::app::Clusters;
-    this->setDutyCycle(this->fanPercentSetting);
-}
+    gpio_set_level(FAN_POWER_GPIO, this->fanPercentSetting > 0 ? 1 : 0);
 
-// ── PWM helper ────────────────────────────────────────────────────────────────
-
-void FanDriver::setDutyCycle(uint8_t percent)
-{
-    if (percent > 100)
-        percent = 100;
-
-    gpio_set_level(FAN_POWER_GPIO, percent > 0 ? 1 : 0);
-
-    const uint32_t duty = (static_cast<uint32_t>(percent) * PWM_MAX_DUTY) / 100;
+    const uint32_t duty = (static_cast<uint32_t>(this->fanPercentSetting) * PWM_MAX_DUTY) / 100;
     ledc_set_duty(PWM_SPEED_MODE, PWM_CHANNEL, duty);
     ledc_update_duty(PWM_SPEED_MODE, PWM_CHANNEL);
-    ESP_LOGI(TAG, "Fan PWM: %u%% (duty %lu/%lu)", percent, duty, PWM_MAX_DUTY);
+    ESP_LOGI(TAG, "Fan PWM: %u%% (duty %lu/%lu)", this->fanPercentSetting, duty, PWM_MAX_DUTY);
 }
+
