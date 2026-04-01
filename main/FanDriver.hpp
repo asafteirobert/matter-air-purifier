@@ -24,15 +24,16 @@ class FanDriver
 
 public:
     void init(uint16_t fanEndpointId, DisplayDriver& displayDriver);
+    void syncFromMatter();
     esp_err_t attributeUpdate(esp_matter::attribute::callback_type_t type,
                               uint16_t endpoint_id,
                               uint32_t cluster_id,
                               uint32_t attribute_id,
                               esp_matter_attr_val_t *val);
-    void applyFanState();
+    void setFanPercentSetting(uint8_t newSetting);
 
 private:
-    void setFanPercentSetting(uint8_t newSetting);
+    void applyFanState();
     void readAndSendRpm();
     static void tachTimerCb(void *arg);
 

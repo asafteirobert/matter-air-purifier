@@ -136,6 +136,38 @@ void FanDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
     ESP_ERROR_CHECK(esp_timer_start_periodic(this->tachTimer, RPM_READ_INTERVAL_MS * 1000 /* µs */));
 }
 
+// ── Sync state from Matter NVS on startup ────────────────────────────────────
+
+void FanDriver::syncFromMatter()
+{
+    using namespace chip::app::Clusters;
+
+    esp_matter_attr_val_t val = {};
+    esp_err_t err = esp_matter::attribute::get_val(
+        this->fanEndpointId,
+        FanControl::Id,
+        FanControl::Attributes::FanMode::Id,
+        &val);
+
+    if (err != ESP_OK)
+    {
+        ESP_LOGW(TAG, "syncFromMatter: get_val failed (%d)", err);
+        return;
+    }
+
+    uint8_t pct = fanModeDefaultPercent(val.val.u8);
+    ESP_LOGI(TAG, "syncFromMatter: FanMode=%u -> fanPercentSetting=%u", val.val.u8, pct);
+    this->setFanPercentSetting(pct);
+
+    const uint32_t FC = FanControl::Id;
+    this->updatingAttibutesInCallback = true;
+    updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::PercentSetting::Id, this->fanPercentSetting);
+    updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedSetting::Id, this->fanPercentSetting);
+    updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, this->fanPercentSetting);
+    updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
+    this->updatingAttibutesInCallback = false;
+}
+
 // ── Tachometer sampling ───────────────────────────────────────────────────────
 
 void FanDriver::tachTimerCb(void *arg)
@@ -150,6 +182,7 @@ void FanDriver::setFanPercentSetting(uint8_t newSetting)
 
     this->fanPercentSetting = newSetting;
     this->displayDriver->setFanPercentSetting(newSetting);
+    this->applyFanState();
 }
 
 void FanDriver::readAndSendRpm()
@@ -252,7 +285,6 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
         return ESP_OK;  // Not a handled attribute
     }
 
-    this->applyFanState();
     return ESP_OK;
 }
 
