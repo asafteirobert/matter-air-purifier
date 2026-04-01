@@ -5,7 +5,7 @@
 
 class ButtonDriver
 {
-    static constexpr char *TAG = "app_button_driver";
+    static constexpr const char *TAG = "app_button_driver";
     public:
         void init(uint16_t fanEndpointId, DisplayDriver& displayDriver);
     private:

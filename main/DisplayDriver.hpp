@@ -10,7 +10,7 @@ extern "C"
 
 class DisplayDriver
 {
-    static constexpr char *TAG = "app_display_driver";
+    static constexpr const char *TAG = "app_display_driver";
 
     public:
         enum class Screen
