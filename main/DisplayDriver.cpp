@@ -199,8 +199,8 @@ void DisplayDriver::drawMainScreenRPMCount()
     u8g2_DrawBox(&this->display, 37, 0, 21, 13);
     u8g2_SetDrawColor(&this->display, 1);
     u8g2_SetFont(&this->display, u8g2_font_6x13_tr);
-    char s[5];
-    snprintf(s, sizeof(s), "%4lu", (unsigned long)this->mainScreenRPM);
+    char s[6];
+    snprintf(s, sizeof(s), "%5lu", (unsigned long)this->mainScreenRPM);
     u8g2_DrawStr(&this->display, 37, 13, s);
     u8g2_UpdateDisplayArea(&this->display, 4, 0, 4, 2);
     this->mainScreenRPMCountDirty = false;
