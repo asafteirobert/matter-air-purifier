@@ -12,6 +12,7 @@ class ButtonDriver
         static void buttonClickCallback(void* handle, void* userData);
         static void buttonLongPressHoldCallback(void *handle, void *userData);
         static void buttonPressUpCallback(void *handle, void *userData);
+        static void panelButtonDoubleClickCallback(void *handle, void *userData);
 
         button_handle_t boardButtonHandle = nullptr;
         button_handle_t panelButtonHandle = nullptr;

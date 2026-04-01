@@ -215,6 +215,16 @@ static void signalTimerCb(void * /*arg*/)
         //else
         //    ESP_LOGW(TAG, "Thread RSSI unavailable (role %d)", (int)role);
 
+        DisplayDriver::ThreadRole displayRole;
+        switch (role)
+        {
+            case OT_DEVICE_ROLE_CHILD:    displayRole = DisplayDriver::ThreadRole::Child;    break;
+            case OT_DEVICE_ROLE_ROUTER:   displayRole = DisplayDriver::ThreadRole::Router;   break;
+            case OT_DEVICE_ROLE_LEADER:   displayRole = DisplayDriver::ThreadRole::Leader;   break;
+            case OT_DEVICE_ROLE_DETACHED: displayRole = DisplayDriver::ThreadRole::Detached; break;
+            default:                      displayRole = DisplayDriver::ThreadRole::Disabled; break;
+        }
+        displayDriver.setThreadRole(displayRole);
         displayDriver.setSignal(rssi);
     }
 #endif

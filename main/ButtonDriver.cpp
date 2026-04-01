@@ -12,7 +12,7 @@ void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
     const button_config_t buttonConfig = 
     {
         .long_press_time  = 5000,   // 5 s - factory reset
-        .short_press_time = 50,
+        .short_press_time = 500,
     };
     const button_gpio_config_t boardButtonGpioConfig = 
     {
@@ -50,6 +50,7 @@ void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
 
     err = ESP_OK;
     err |= iot_button_register_cb(this->panelButtonHandle, BUTTON_SINGLE_CLICK, NULL, buttonClickCallback, this);
+    err |= iot_button_register_cb(this->panelButtonHandle, BUTTON_DOUBLE_CLICK, NULL, panelButtonDoubleClickCallback, this);
     err |= iot_button_register_cb(this->panelButtonHandle, BUTTON_LONG_PRESS_HOLD, NULL, buttonLongPressHoldCallback, this);
     err |= iot_button_register_cb(this->panelButtonHandle, BUTTON_PRESS_UP, NULL, buttonPressUpCallback, this);
     if (err != ESP_OK)
@@ -67,6 +68,15 @@ void ButtonDriver::buttonClickCallback(void *handle, void *userData)
     using namespace chip::app::Clusters;
 
     ButtonDriver* thisInstance = (ButtonDriver*)userData;
+
+    if (handle == thisInstance->panelButtonHandle &&
+        thisInstance->displayDriver->getActiveScreen() == DisplayDriver::Screen::Info)
+    {
+        ESP_LOGI(TAG, "Panel button click: return to main screen");
+        thisInstance->displayDriver->setActiveScreen(DisplayDriver::Screen::Main);
+        return;
+    }
+
     ESP_LOGI(TAG, "Button click: toggle fan");
     uint16_t endpointId = thisInstance->fanEndpointId;
     uint32_t clusterId = FanControl::Id;
@@ -103,5 +113,15 @@ void ButtonDriver::buttonPressUpCallback(void *handle, void *userData)
         ESP_LOGI(TAG, "Starting factory reset");
         esp_matter::factory_reset();
         thisInstance->performFactoryReset = false;
+    }
+}
+
+void ButtonDriver::panelButtonDoubleClickCallback(void *handle, void *userData)
+{
+    ButtonDriver* thisInstance = (ButtonDriver*)userData;
+    if (!thisInstance->performFactoryReset)
+    {
+        ESP_LOGI(TAG, "Panel button double click: show info screen");
+        thisInstance->displayDriver->setActiveScreen(DisplayDriver::Screen::Info);
     }
 }

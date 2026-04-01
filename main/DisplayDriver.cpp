@@ -65,6 +65,7 @@ void DisplayDriver::setRPM(uint32_t fan1RPM, uint32_t fan2RPM, uint32_t fan3RPM)
         this->mainScreenRPM = minRPM;
         this->mainScreenRPMCountDirty = true;
     }
+    this->infoScreenDirty = true;
 }
 
 void DisplayDriver::setActiveScreen(Screen screen)
@@ -76,10 +77,13 @@ void DisplayDriver::setActiveScreen(Screen screen)
         this->identifyScreenDirty = true;
     else if (screen == Screen::FactoryReset)
         this->factoryResetScreenDirty = true;
+    else if (screen == Screen::Info)
+        this->infoScreenDirty = true;
 }
 
 void DisplayDriver::setSignal(int8_t rssi)
 {
+    this->signalRSSI = rssi;
     uint8_t activeSignalBars;
     if      (rssi >= -65) activeSignalBars = 4;
     else if (rssi >= -75) activeSignalBars = 3;
@@ -90,6 +94,16 @@ void DisplayDriver::setSignal(int8_t rssi)
     {
         this->mainScreenActiveSignalBars = activeSignalBars;
         this->mainScreenSignalBarsDirty = true;
+    }
+    this->infoScreenDirty = true;
+}
+
+void DisplayDriver::setThreadRole(ThreadRole role)
+{
+    if (this->threadRole != role)
+    {
+        this->threadRole = role;
+        this->infoScreenDirty = true;
     }
 }
 
@@ -259,15 +273,45 @@ void DisplayDriver::drawFactoryResetScreen()
 
 void DisplayDriver::drawInfoScreen()
 {
+    if (!this->infoScreenDirty)
+        return;
+
     u8g2_ClearBuffer(&this->display);
-
     u8g2_SetFont(&this->display, u8g2_font_profont10_tr);
-    u8g2_DrawStr(&this->display, 1, 7, "Info 1: 192.168.10.10");
-    u8g2_DrawStr(&this->display, 1, 15, "Info 2: Connected");
-    u8g2_DrawStr(&this->display, 1, 23, "Info 3: Hello World");
-    u8g2_DrawStr(&this->display, 1, 31, "Speeds: 1234 3214 900");
 
-    u8g2_SendBuffer(&this->display); 
+    char line[38];
+
+    // Fan RPMs
+    snprintf(line, sizeof(line), "%4lu|%4lu|%4lu RPM",
+             (unsigned long)this->fan1RPM,
+             (unsigned long)this->fan2RPM,
+             (unsigned long)this->fan3RPM);
+    u8g2_DrawStr(&this->display, 1, 7, line);
+
+    // Signal strength
+    snprintf(line, sizeof(line), "Sig: %4d dBm", (int)this->signalRSSI);
+    u8g2_DrawStr(&this->display, 1, 15, line);
+
+    // Thread role
+    const char *roleStr;
+    switch (this->threadRole)
+    {
+        case ThreadRole::Child:    roleStr = "Child";    break;
+        case ThreadRole::Router:   roleStr = "Router";   break;
+        case ThreadRole::Leader:   roleStr = "Leader";   break;
+        case ThreadRole::Detached: roleStr = "Detached"; break;
+        default:                   roleStr = "Disabled"; break;
+    }
+    snprintf(line, sizeof(line), "Role: %s", roleStr);
+    u8g2_DrawStr(&this->display, 1, 23, line);
+
+    // Firmware version
+    const esp_app_desc_t *app_desc = esp_app_get_description();
+    snprintf(line, sizeof(line), "fw: v%s", app_desc->version);
+    u8g2_DrawStr(&this->display, 1, 31, line);
+
+    u8g2_SendBuffer(&this->display);
+    this->infoScreenDirty = false;
 }
 
 void DisplayDriver::drawMainScreenAnimation(bool force)
@@ -303,6 +347,10 @@ void DisplayDriver::screenUpdateTask(void *arg)
         else if (driver->activeScreen == Screen::FactoryReset)
         {
             driver->drawFactoryResetScreen();
+        }
+        else if (driver->activeScreen == Screen::Info)
+        {
+            driver->drawInfoScreen();
         }
         vTaskDelay(driver->screenUpdateTaskDelay);
     }
