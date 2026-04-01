@@ -34,7 +34,7 @@ void DisplayDriver::setFanPercentSetting(uint8_t newSetting)
     if (this->fanPercentSetting == newSetting)
         return;
     this->fanPercentSetting = newSetting;
-    // set the animation speed based on fanPercentSetting
+    // set the animation speed and screen update rate based on fanPercentSetting
     static constexpr uint8_t animationTableCount = 8;
     static uint8_t animationFrameSpeeds[animationTableCount] = {0, 1,  1,  2,  2,  3,  3,  3};
     static uint8_t animationTaskDelays[animationTableCount] =  {8, 4,  3,  4,  3,  4,  3,  2};
@@ -49,7 +49,7 @@ void DisplayDriver::setFanPercentSetting(uint8_t newSetting)
         }
     }
     this->animationFrameSpeed = animationFrameSpeeds[animationTableIndex];
-    this->animationTaskDelay = animationTaskDelays[animationTableIndex];
+    this->screenUpdateTaskDelay = animationTaskDelays[animationTableIndex];
     
     this->mainScreenDirty = true;
 }
@@ -89,8 +89,6 @@ void DisplayDriver::setSignal(int8_t rssi)
 
 void DisplayDriver::drawSplashScreen()
 {
-    static const uint8_t airPurifierIcon[] = {0xff,0xff,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x01,0x01,0x00,0x81,0x02,0x01,0x00,0x01,0x01,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0xd9,0x36,0x01,0x00,0xd9,0x36,0x01,0x00,0xd9,0x36,0x8d,0x03,0xd9,0x36,0xd9,0x06,0xd9,0x36,0x71,0x0c,0xd9,0x36,0x01,0x00,0xd9,0x36,0x01,0x00,0xd9,0x36,0x8d,0x03,0xd9,0x36,0xd9,0x06,0xd9,0x36,0x71,0x0c,0xd9,0x36,0x01,0x00,0x01,0x00,0x01,0x00,0xf9,0x3f,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0xff,0xff,0x01,0x00,0x24,0x48,0x00,0x00,0x3c,0x78,0x00,0x00};
-
     u8g2_SetFont(&this->display, u8g2_font_t0_13_tr);
     u8g2_DrawStr(&this->display, 38, 14, "Air purifier");
 
@@ -100,7 +98,7 @@ void DisplayDriver::drawSplashScreen()
     versionString[0] = 'v';
     strlcpy(versionString + 1, app_desc->version, sizeof(app_desc->version));
     u8g2_DrawStr(&this->display, 67, 27, versionString);
-    u8g2_DrawXBM(&this->display, 2, 3, 28, 25, airPurifierIcon);
+    u8g2_DrawXBM(&this->display, 2, 3, AIR_PURIFIER_ICON_WIDTH, AIR_PURIFIER_ICON_HEIGH, AIR_PURIFIER_ICON);
     u8g2_SendBuffer(&this->display);
 }
 
@@ -239,6 +237,22 @@ void DisplayDriver::drawAnimation(bool force)
     u8g2_UpdateDisplayArea(&this->display, 0, 0, 4, 4);
 }
 
+
+void DisplayDriver::startTask()
+{
+    xTaskCreate(screenUpdateTask, "display_update", 4096, this, 5, nullptr);
+}
+
+void DisplayDriver::screenUpdateTask(void *arg)
+{
+    DisplayDriver *driver = static_cast<DisplayDriver *>(arg);
+    while (true)
+    {
+        driver->drawMainScreen();
+        driver->drawAnimation();
+        vTaskDelay(driver->screenUpdateTaskDelay);
+    }
+}
 
 void DisplayDriver::sendPartialBuffer(u8g2_t *u8g2,
                                       uint8_t page_start, uint8_t page_end,

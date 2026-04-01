@@ -1,6 +1,8 @@
 #pragma once
 #include <u8g2.h>
 #include "sdkconfig.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 extern "C"
 {
     #include "u8g2_esp32_hal.h"
@@ -20,6 +22,7 @@ class DisplayDriver
 
     public:
         void init();
+        void startTask();
         void setFanPercentSetting(uint8_t newSetting);
         void setRPM(uint32_t fan1RPM, uint32_t fan2RPM, uint32_t fan3RPM);
         void setActiveScreen(Screen screen);
@@ -35,6 +38,7 @@ class DisplayDriver
         void drawAnimation(bool force = false);
 
     private:
+        static void screenUpdateTask(void *arg);
         void sendPartialBuffer(u8g2_t *u8g2, uint8_t page_start, uint8_t page_end, uint8_t col_start, uint8_t col_end);
         uint8_t fanPercentSetting = 255;
         uint32_t fan1RPM = 0;
@@ -48,6 +52,6 @@ class DisplayDriver
         bool mainScreenSignalBarsDirty = false;
         uint8_t currentAnimationFrame = 0;
         uint8_t animationFrameSpeed = 1;
-        uint8_t animationTaskDelay = 1;
+        uint8_t screenUpdateTaskDelay = 1;
         u8g2_t display;
 };

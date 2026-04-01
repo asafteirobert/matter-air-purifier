@@ -340,11 +340,6 @@ extern "C" void app_main()
     ESP_LOGI(TAG, "Init finished");
 
     vTaskDelay(2000 / portTICK_PERIOD_MS);
-    while (true)
-    {
-        displayDriver.drawMainScreen();
-        displayDriver.drawAnimation();
-        //vTaskDelay(100 / portTICK_PERIOD_MS);
-        vTaskDelay(2);
-    }
+    displayDriver.startTask();
+    vTaskDelete(nullptr);
 }
