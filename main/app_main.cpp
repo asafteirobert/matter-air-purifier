@@ -142,12 +142,6 @@ static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
     }
 }
 
-static void identify_task(void *arg)
-{
-    displayDriver.setActiveScreen(DisplayDriver::Screen::Identify);
-    vTaskDelete(nullptr);
-}
-
 // This callback is invoked when clients interact with the Identify Cluster.
 // In the callback implementation, an endpoint can identify itself. (e.g., by flashing an LED or light).
 static esp_err_t app_identification_cb(identification::callback_type_t type, uint16_t endpoint_id, uint8_t effect_id,
@@ -156,7 +150,7 @@ static esp_err_t app_identification_cb(identification::callback_type_t type, uin
     ESP_LOGI(TAG, "Identification callback: type: %u, effect: %u, variant: %u", type, effect_id, effect_variant);
     if (type == identification::START || type == identification::EFFECT) 
     {
-        xTaskCreate(identify_task, "identify", 2048, nullptr, 5, nullptr);
+        displayDriver.setActiveScreen(DisplayDriver::Screen::Identify);
     }
     return ESP_OK;
 }
