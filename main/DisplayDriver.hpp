@@ -12,15 +12,15 @@ class DisplayDriver
 {
     static constexpr char *TAG = "app_display_driver";
 
-    enum class Screen
-    {
-        Main = 0,
-        Identify,
-        FactoryReset,
-        Info
-    };
-
     public:
+        enum class Screen
+        {
+            Main = 0,
+            Identify,
+            FactoryReset,
+            Info
+        };
+
         void init();
         void startTask();
         void setFanPercentSetting(uint8_t newSetting);
@@ -28,18 +28,19 @@ class DisplayDriver
         void setActiveScreen(Screen screen);
         void setSignal(int8_t rssi);
         void drawSplashScreen();
-        void drawMainScreen();
-        void drawMainScreenSignalBars();
-        void drawMainScreenRPMCount();
-        void drawIdentifyScreen();
-        void drawFactoryResetScreen();
-        void drawInfoScreen();
-
-        void drawAnimation(bool force = false);
 
     private:
         static void screenUpdateTask(void *arg);
         void sendPartialBuffer(u8g2_t *u8g2, uint8_t page_start, uint8_t page_end, uint8_t col_start, uint8_t col_end);
+        void drawMainScreen();
+        void drawMainScreenSignalBars();
+        void drawMainScreenRPMCount();
+        void drawMainScreenAnimation(bool force = false);
+        void drawIdentifyScreen();
+        void invertDisplayBuffer();
+        void drawFactoryResetScreen();
+        void drawInfoScreen();
+
         uint8_t fanPercentSetting = 255;
         uint32_t fan1RPM = 0;
         uint32_t fan2RPM = 0;
@@ -53,5 +54,8 @@ class DisplayDriver
         uint8_t currentAnimationFrame = 0;
         uint8_t animationFrameSpeed = 1;
         uint8_t screenUpdateTaskDelay = 1;
+        bool identifyScreenDirty = true;
+        TickType_t identifyStartTick = 0;
+        TickType_t identifyLastInvertTick = 0;
         u8g2_t display;
 };

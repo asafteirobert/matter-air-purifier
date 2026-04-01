@@ -70,6 +70,10 @@ void DisplayDriver::setRPM(uint32_t fan1RPM, uint32_t fan2RPM, uint32_t fan3RPM)
 void DisplayDriver::setActiveScreen(Screen screen)
 {
     this->activeScreen = screen;
+    if (screen == Screen::Main)
+        this->mainScreenDirty = true;
+    else if (screen == Screen::Identify)
+        this->identifyScreenDirty = true;
 }
 
 void DisplayDriver::setSignal(int8_t rssi)
@@ -130,7 +134,7 @@ void DisplayDriver::drawMainScreen()
         u8g2_DrawStr(&this->display, 63, 13, "RPM");
 
         if (this->animationFrameSpeed == 0)
-            this->drawAnimation(true);
+            this->drawMainScreenAnimation(true);
 
         // update only right area and leave animation
         u8g2_UpdateDisplayArea(&this->display, 5, 0, 11, 4);
@@ -148,6 +152,9 @@ void DisplayDriver::drawMainScreen()
             this->drawMainScreenSignalBars();
         }
     }
+
+    this->drawMainScreenAnimation();
+
 }
 
 void DisplayDriver::drawMainScreenSignalBars()
@@ -183,17 +190,46 @@ void DisplayDriver::drawMainScreenRPMCount()
     this->mainScreenRPMCountDirty = false;
 }
 
+void DisplayDriver::invertDisplayBuffer()
+{
+    uint8_t *buf = u8g2_GetBufferPtr(&this->display);
+    uint16_t len = u8g2_GetBufferTileWidth(&this->display) * u8g2_GetBufferTileHeight(&this->display) * 8;
+    for (uint16_t i = 0; i < len; i++)
+        buf[i] ^= 0xFF;
+    u8g2_SendBuffer(&this->display);
+}
+
 void DisplayDriver::drawIdentifyScreen()
 {
-    u8g2_ClearBuffer(&this->display);
+    TickType_t now = xTaskGetTickCount();
 
-    u8g2_DrawXBM(&this->display, 0, 0, 32, 32, WARNING_ICON);
-    u8g2_SetFont(&this->display, u8g2_font_t0_17b_tr);
-    u8g2_DrawStr(&this->display, 44, 23, "Identify");
+    if (this->identifyScreenDirty)
+    {
+        u8g2_ClearBuffer(&this->display);
 
-    //Todo, invert buffer every second
+        u8g2_DrawXBM(&this->display, 0, 0, 32, 32, WARNING_ICON);
+        u8g2_SetFont(&this->display, u8g2_font_t0_17b_tr);
+        u8g2_DrawStr(&this->display, 44, 23, "Identify");
 
-    u8g2_SendBuffer(&this->display); 
+        u8g2_SendBuffer(&this->display);
+
+        this->identifyScreenDirty = false;
+        this->identifyStartTick = now;
+        this->identifyLastInvertTick = now;
+        return;
+    }
+
+    if ((now - this->identifyStartTick) >= pdMS_TO_TICKS(10000))
+    {
+        this->setActiveScreen(Screen::Main);
+        return;
+    }
+
+    if ((now - this->identifyLastInvertTick) >= pdMS_TO_TICKS(500))
+    {
+        this->invertDisplayBuffer();
+        this->identifyLastInvertTick = now;
+    }
 }
 
 void DisplayDriver::drawFactoryResetScreen()
@@ -226,7 +262,7 @@ void DisplayDriver::drawInfoScreen()
     u8g2_SendBuffer(&this->display); 
 }
 
-void DisplayDriver::drawAnimation(bool force)
+void DisplayDriver::drawMainScreenAnimation(bool force)
 {
     if (this->animationFrameSpeed == 0 && !force)
         return;
@@ -248,8 +284,14 @@ void DisplayDriver::screenUpdateTask(void *arg)
     DisplayDriver *driver = static_cast<DisplayDriver *>(arg);
     while (true)
     {
-        driver->drawMainScreen();
-        driver->drawAnimation();
+        if (driver->activeScreen == Screen::Main)
+        {
+            driver->drawMainScreen();
+        }
+        else if (driver->activeScreen == Screen::Identify)
+        {
+            driver->drawIdentifyScreen();
+        }
         vTaskDelay(driver->screenUpdateTaskDelay);
     }
 }

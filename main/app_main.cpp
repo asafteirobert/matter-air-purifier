@@ -144,8 +144,7 @@ static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
 
 static void identify_task(void *arg)
 {
-    // TODO
-
+    displayDriver.setActiveScreen(DisplayDriver::Screen::Identify);
     vTaskDelete(nullptr);
 }
 
