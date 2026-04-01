@@ -75,9 +75,10 @@ void ButtonDriver::buttonClickCallback(void *handle, void *userData)
 
     esp_matter_attr_val_t val = esp_matter_invalid(NULL);
     esp_matter::attribute::get_val(attribute, &val);
-    // Toggle between Off and High (kOffHigh sequence — no discrete speed presets)
-    val.val.u8 = (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kOff)
-                 ? (uint8_t)FanControl::FanModeEnum::kHigh
+    // Toggle between presets
+    val.val.u8 = (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kOff) ? (uint8_t)FanControl::FanModeEnum::kLow
+               : (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kLow) ? (uint8_t)FanControl::FanModeEnum::kMedium
+               : (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kMedium) ? (uint8_t)FanControl::FanModeEnum::kHigh
                  : (uint8_t)FanControl::FanModeEnum::kOff;
     esp_matter::attribute::update(endpointId, clusterId, attributeId, &val);
 }
