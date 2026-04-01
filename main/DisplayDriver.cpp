@@ -152,9 +152,8 @@ void DisplayDriver::drawMainScreen()
         if (this->animationFrameSpeed == 0)
             this->drawMainScreenAnimation(true);
 
-        // update only right area and leave animation
-        u8g2_UpdateDisplayArea(&this->display, 5, 0, 11, 4);
-        u8g2_SendBuffer(&this->display); 
+        // update only right area (tile 4 onward), leave animation (tiles 0–3)
+        u8g2_UpdateDisplayArea(&this->display, 4, 0, 12, 4);
         this->mainScreenDirty = false;
     }
     else
