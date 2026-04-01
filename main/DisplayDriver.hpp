@@ -32,11 +32,11 @@ class DisplayDriver
         void drawFactoryResetScreen();
         void drawInfoScreen();
 
-        void drawAnimation();
+        void drawAnimation(bool force = false);
 
     private:
         void sendPartialBuffer(u8g2_t *u8g2, uint8_t page_start, uint8_t page_end, uint8_t col_start, uint8_t col_end);
-        uint8_t fanPercentSetting = 0;
+        uint8_t fanPercentSetting = 255;
         uint32_t fan1RPM = 0;
         uint32_t fan2RPM = 0;
         uint32_t fan3RPM = 0;

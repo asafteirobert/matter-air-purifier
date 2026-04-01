@@ -131,6 +131,9 @@ void DisplayDriver::drawMainScreen()
         this->drawMainScreenRPMCount();
         u8g2_DrawStr(&this->display, 63, 13, "RPM");
 
+        if (this->animationFrameSpeed == 0)
+            this->drawAnimation(true);
+
         // update only right area and leave animation
         u8g2_UpdateDisplayArea(&this->display, 5, 0, 11, 4);
         u8g2_SendBuffer(&this->display); 
@@ -141,12 +144,10 @@ void DisplayDriver::drawMainScreen()
         if (this->mainScreenRPMCountDirty)
         {
             this->drawMainScreenRPMCount();
-            this->mainScreenRPMCountDirty = false;
         }
         if (this->mainScreenSignalBarsDirty)
         {
             this->drawMainScreenSignalBars();
-            this->mainScreenSignalBarsDirty = false;
         }
     }
 }
@@ -166,6 +167,7 @@ void DisplayDriver::drawMainScreenSignalBars()
         (filled ? u8g2_DrawBox : u8g2_DrawFrame)(&this->display, 112 + i * 4, 12 - i * 4, 3, 4 * i + 3);
     }
     u8g2_UpdateDisplayArea(&this->display, 14, 0, 2, 2);
+    this->mainScreenSignalBarsDirty = false;
 }
 
 void DisplayDriver::drawMainScreenRPMCount()
@@ -180,6 +182,7 @@ void DisplayDriver::drawMainScreenRPMCount()
     snprintf(s, sizeof(s), "%4lu", (unsigned long)this->mainScreenRPM);
     u8g2_DrawStr(&this->display, 37, 13, s);
     u8g2_UpdateDisplayArea(&this->display, 4, 0, 4, 2);
+    this->mainScreenRPMCountDirty = false;
 }
 
 void DisplayDriver::drawIdentifyScreen()
@@ -225,9 +228,9 @@ void DisplayDriver::drawInfoScreen()
     u8g2_SendBuffer(&this->display); 
 }
 
-void DisplayDriver::drawAnimation()
+void DisplayDriver::drawAnimation(bool force)
 {
-    if (this->animationFrameSpeed == 0)
+    if (this->animationFrameSpeed == 0 && !force)
         return;
     u8g2_DrawXBM(&this->display, 0, 0, 32, 32, FAN_ANIMATION[this->currentAnimationFrame]);
     this->currentAnimationFrame = this->currentAnimationFrame + this->animationFrameSpeed;
