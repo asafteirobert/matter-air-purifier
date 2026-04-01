@@ -173,12 +173,12 @@ static esp_err_t app_attribute_update_cb(attribute::callback_type_t type,
                                          esp_matter_attr_val_t *val,
                                          void *priv_data)
 {
-    ESP_LOGI(TAG, "app_attribute_update_cb type: %d, endpoint_id: %d, cluster_id: %d, attribute_id: %d, val.u8: %d", 
-                  type,
-                  endpoint_id, 
-                  cluster_id, 
-                  attribute_id, 
-                  (val) ? val->val.u8 : -1);
+    //ESP_LOGI(TAG, "app_attribute_update_cb type: %d, endpoint_id: %d, cluster_id: %d, attribute_id: %d, val.u8: %d", 
+    //              type,
+    //              endpoint_id, 
+    //              cluster_id, 
+    //              attribute_id, 
+    //              (val) ? val->val.u8 : -1);
 
     return fanDriver.attributeUpdate(type, endpoint_id, cluster_id, attribute_id, val);
 }
