@@ -112,7 +112,7 @@ void DisplayDriver::drawMainScreen()
     {
         // clear only my area, leave animation
         u8g2_SetDrawColor(&this->display, 0);
-        u8g2_DrawBox(&this->display, 33, 0, 128 - 33, 32);
+        u8g2_DrawBox(&this->display, 32, 0, 128 - 32, 32);
         u8g2_SetDrawColor(&this->display, 1);
 
         //progress bar
