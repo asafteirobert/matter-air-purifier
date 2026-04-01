@@ -23,6 +23,7 @@ class DisplayDriver
         void setFanPercentSetting(uint8_t newSetting);
         void setRPM(uint32_t fan1RPM, uint32_t fan2RPM, uint32_t fan3RPM);
         void setActiveScreen(Screen screen);
+        void setSignal(int8_t rssi);
         void drawSplashScreen();
         void drawMainScreen();
         void drawMainScreenSignalBars();

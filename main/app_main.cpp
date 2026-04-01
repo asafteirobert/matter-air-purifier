@@ -18,7 +18,12 @@
 
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD
 #include <platform/ESP32/OpenthreadLauncher.h>
+#include <esp_openthread.h>
+#include <esp_openthread_lock.h>
+#include <openthread/thread.h>
 #endif
+
+#include "esp_timer.h"
 
 #include <app/server/CommissioningWindowManager.h>
 #include <app/server/Server.h>
@@ -178,6 +183,44 @@ static esp_err_t app_attribute_update_cb(attribute::callback_type_t type,
     return fanDriver.attributeUpdate(type, endpoint_id, cluster_id, attribute_id, val);
 }
 
+static void signalTimerCb(void * /*arg*/)
+{
+#if CHIP_DEVICE_CONFIG_ENABLE_THREAD
+    if (esp_openthread_lock_acquire(pdMS_TO_TICKS(100)))
+    {
+        otInstance   *instance = esp_openthread_get_instance();
+        otDeviceRole  role     = otThreadGetDeviceRole(instance);
+        int8_t        rssi     = -120;
+        bool          valid    = false;
+
+        if (role == OT_DEVICE_ROLE_CHILD)
+        {
+            valid = (otThreadGetParentAverageRssi(instance, &rssi) == OT_ERROR_NONE);
+        }
+        else if (role == OT_DEVICE_ROLE_ROUTER || role == OT_DEVICE_ROLE_LEADER)
+        {
+            otNeighborInfoIterator it = OT_NEIGHBOR_INFO_ITERATOR_INIT;
+            otNeighborInfo         info;
+            while (otThreadGetNextNeighborInfo(instance, &it, &info) == OT_ERROR_NONE)
+            {
+                if (!info.mIsChild && info.mAverageRssi > rssi)
+                    rssi = info.mAverageRssi;
+            }
+            valid = (rssi > -120);
+        }
+
+        esp_openthread_lock_release();
+
+        //if (valid)
+        //    ESP_LOGI(TAG, "Thread RSSI: %d dBm (role %d)", rssi, (int)role);
+        //else
+        //    ESP_LOGW(TAG, "Thread RSSI unavailable (role %d)", (int)role);
+
+        displayDriver.setSignal(rssi);
+    }
+#endif
+}
+
 extern "C" void app_main()
 {
     esp_err_t err = ESP_OK;
@@ -265,6 +308,17 @@ extern "C" void app_main()
 
     ESP_LOGI(TAG, "Matter started");
 
+    esp_timer_handle_t signalTimer = nullptr;
+    const esp_timer_create_args_t signalTimerArgs = {
+        .callback = signalTimerCb,
+        .arg      = nullptr,
+        .name     = "signal_timer",
+    };
+    ESP_ERROR_CHECK(esp_timer_create(&signalTimerArgs, &signalTimer));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(signalTimer, 10 * 1000 * 1000 /* µs = 10 s */));
+    signalTimerCb(nullptr);
+
+
 #if CONFIG_ENABLE_ENCRYPTED_OTA
     err = esp_matter_ota_requestor_encrypted_init(s_decryption_key, s_decryption_key_len);
     ABORT_APP_ON_FAILURE(err == ESP_OK, ESP_LOGE(TAG, "Failed to initialized the encrypted OTA, err: %d", err));
@@ -283,8 +337,9 @@ extern "C" void app_main()
 #endif
 
     ESP_LOGI(TAG, "Init finished");
-    vTaskDelay(3000 / portTICK_PERIOD_MS);
-    while (true) 
+
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    while (true)
     {
         displayDriver.drawMainScreen();
         displayDriver.drawAnimation();
