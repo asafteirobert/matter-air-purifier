@@ -9,24 +9,28 @@ void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
 {
     this->fanEndpointId = fanEndpointId;
     this->displayDriver = &displayDriver;
-    const button_config_t buttonConfig = 
+
+    this->infoScreenEventArgs = { .long_press = { .press_time = 2000 } };
+    this->factoryResetEventArgs = { .long_press = { .press_time = 8000 } };
+
+    const button_config_t buttonConfig =
     {
-        .long_press_time  = 5000,   // 5 s - factory reset
-        .short_press_time = 500,
+        .long_press_time  = 2000,
+        .short_press_time = 50,
     };
-    const button_gpio_config_t boardButtonGpioConfig = 
+    const button_gpio_config_t boardButtonGpioConfig =
     {
         .gpio_num = BOARD_BUTTON_GPIO,
         .active_level = 0,
     };
 
-    const button_gpio_config_t panelButtonGpioConfig = 
+    const button_gpio_config_t panelButtonGpioConfig =
     {
         .gpio_num = PANEL_BUTTON_GPIO,
         .active_level = 0,
     };
 
-    if (iot_button_new_gpio_device(&buttonConfig, &boardButtonGpioConfig, &this->boardButtonHandle) != ESP_OK) 
+    if (iot_button_new_gpio_device(&buttonConfig, &boardButtonGpioConfig, &this->boardButtonHandle) != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to create button device");
         return;
@@ -34,7 +38,8 @@ void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
 
     esp_err_t err = ESP_OK;
     err |= iot_button_register_cb(this->boardButtonHandle, BUTTON_SINGLE_CLICK, NULL, buttonClickCallback, this);
-    err |= iot_button_register_cb(this->boardButtonHandle, BUTTON_LONG_PRESS_HOLD, NULL, buttonLongPressHoldCallback, this);
+    err |= iot_button_register_cb(this->boardButtonHandle, BUTTON_LONG_PRESS_START, &this->infoScreenEventArgs, buttonLongPressInfoCallback, this);
+    err |= iot_button_register_cb(this->boardButtonHandle, BUTTON_LONG_PRESS_START, &this->factoryResetEventArgs, buttonLongPressFactoryResetCallback, this);
     err |= iot_button_register_cb(this->boardButtonHandle, BUTTON_PRESS_UP, NULL, buttonPressUpCallback, this);
     if (err != ESP_OK)
     {
@@ -42,7 +47,7 @@ void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
         return;
     }
 
-    if (iot_button_new_gpio_device(&buttonConfig, &panelButtonGpioConfig, &this->panelButtonHandle) != ESP_OK) 
+    if (iot_button_new_gpio_device(&buttonConfig, &panelButtonGpioConfig, &this->panelButtonHandle) != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to create button device");
         return;
@@ -50,8 +55,8 @@ void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
 
     err = ESP_OK;
     err |= iot_button_register_cb(this->panelButtonHandle, BUTTON_SINGLE_CLICK, NULL, buttonClickCallback, this);
-    err |= iot_button_register_cb(this->panelButtonHandle, BUTTON_DOUBLE_CLICK, NULL, panelButtonDoubleClickCallback, this);
-    err |= iot_button_register_cb(this->panelButtonHandle, BUTTON_LONG_PRESS_HOLD, NULL, buttonLongPressHoldCallback, this);
+    err |= iot_button_register_cb(this->panelButtonHandle, BUTTON_LONG_PRESS_START, &this->infoScreenEventArgs, buttonLongPressInfoCallback, this);
+    err |= iot_button_register_cb(this->panelButtonHandle, BUTTON_LONG_PRESS_START, &this->factoryResetEventArgs, buttonLongPressFactoryResetCallback, this);
     err |= iot_button_register_cb(this->panelButtonHandle, BUTTON_PRESS_UP, NULL, buttonPressUpCallback, this);
     if (err != ESP_OK)
     {
@@ -69,10 +74,9 @@ void ButtonDriver::buttonClickCallback(void *handle, void *userData)
 
     ButtonDriver* thisInstance = (ButtonDriver*)userData;
 
-    if (handle == thisInstance->panelButtonHandle &&
-        thisInstance->displayDriver->getActiveScreen() == DisplayDriver::Screen::Info)
+    if (thisInstance->displayDriver->getActiveScreen() == DisplayDriver::Screen::Info)
     {
-        ESP_LOGI(TAG, "Panel button click: return to main screen");
+        ESP_LOGI(TAG, "Button click: return to main screen");
         thisInstance->displayDriver->setActiveScreen(DisplayDriver::Screen::Main);
         return;
     }
@@ -94,15 +98,19 @@ void ButtonDriver::buttonClickCallback(void *handle, void *userData)
     esp_matter::attribute::update(endpointId, clusterId, attributeId, &val);
 }
 
-void ButtonDriver::buttonLongPressHoldCallback(void *handle, void *userData)
+void ButtonDriver::buttonLongPressInfoCallback(void *handle, void *userData)
 {
     ButtonDriver* thisInstance = (ButtonDriver*)userData;
-    if (!thisInstance->performFactoryReset)
-    {
-        ESP_LOGI(TAG, "Factory reset triggered. Release the button to start factory reset.");
-        thisInstance->performFactoryReset = true;
-        thisInstance->displayDriver->setActiveScreen(DisplayDriver::Screen::FactoryReset);
-    }
+    ESP_LOGI(TAG, "Button held 2s: show info screen");
+    thisInstance->displayDriver->setActiveScreen(DisplayDriver::Screen::Info);
+}
+
+void ButtonDriver::buttonLongPressFactoryResetCallback(void *handle, void *userData)
+{
+    ButtonDriver* thisInstance = (ButtonDriver*)userData;
+    ESP_LOGI(TAG, "Button held 8s: release to factory reset");
+    thisInstance->performFactoryReset = true;
+    thisInstance->displayDriver->setActiveScreen(DisplayDriver::Screen::FactoryReset);
 }
 
 void ButtonDriver::buttonPressUpCallback(void *handle, void *userData)
@@ -113,15 +121,5 @@ void ButtonDriver::buttonPressUpCallback(void *handle, void *userData)
         ESP_LOGI(TAG, "Starting factory reset");
         esp_matter::factory_reset();
         thisInstance->performFactoryReset = false;
-    }
-}
-
-void ButtonDriver::panelButtonDoubleClickCallback(void *handle, void *userData)
-{
-    ButtonDriver* thisInstance = (ButtonDriver*)userData;
-    if (!thisInstance->performFactoryReset)
-    {
-        ESP_LOGI(TAG, "Panel button double click: show info screen");
-        thisInstance->displayDriver->setActiveScreen(DisplayDriver::Screen::Info);
     }
 }
