@@ -80,6 +80,17 @@ void FanDriver::init(uint16_t fanEndpointId)
     };
     ESP_ERROR_CHECK(ledc_channel_config(&channel_cfg));
 
+    // Configure power MOSFET gate pin – LOW = off, HIGH = on
+    gpio_config_t power_gpio_cfg = {
+        .pin_bit_mask = (1ULL << FAN_POWER_GPIO),
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    ESP_ERROR_CHECK(gpio_config(&power_gpio_cfg));
+    gpio_set_level(FAN_POWER_GPIO, 0);  // off until a non-zero speed is set
+
     ESP_LOGI(TAG, "Fan driver initialised – PWM on GPIO %d at %lu Hz", FAN_PWM_GPIO, PWM_FREQ_HZ);
 
     // Configure PCNT units to count tachometer pulses (one per fan)
@@ -250,6 +261,8 @@ void FanDriver::setDutyCycle(uint8_t percent)
 {
     if (percent > 100)
         percent = 100;
+
+    gpio_set_level(FAN_POWER_GPIO, percent > 0 ? 1 : 0);
 
     const uint32_t duty = (static_cast<uint32_t>(percent) * PWM_MAX_DUTY) / 100;
     ledc_set_duty(PWM_SPEED_MODE, PWM_CHANNEL, duty);

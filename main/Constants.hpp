@@ -13,6 +13,9 @@
 /** PC fan PWM */
 #define FAN_PWM_GPIO     GPIO_NUM_18
 
+/** PC fan Mosfet for low-side switching */
+#define FAN_POWER_GPIO     GPIO_NUM_16
+
 /** PC fan 1 tachometer */
 #define FAN1_TACH_GPIO     GPIO_NUM_20
 
