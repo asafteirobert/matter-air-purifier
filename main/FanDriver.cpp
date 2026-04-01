@@ -160,12 +160,12 @@ void FanDriver::syncFromMatter()
     this->setFanPercentSetting(pct);
 
     const uint32_t FC = FanControl::Id;
-    this->updatingAttibutesInCallback = true;
+    this->updatingAttributesInCallback = true;
     updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::PercentSetting::Id, this->fanPercentSetting);
     updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedSetting::Id, this->fanPercentSetting);
     updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, this->fanPercentSetting);
     updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
-    this->updatingAttibutesInCallback = false;
+    this->updatingAttributesInCallback = false;
 }
 
 // ── Tachometer sampling ───────────────────────────────────────────────────────
@@ -225,7 +225,7 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
 
     const uint32_t FC = FanControl::Id;
 
-    if (this->updatingAttibutesInCallback)
+    if (this->updatingAttributesInCallback)
         return ESP_OK;
 
     if (attribute_id == FanControl::Attributes::FanMode::Id)
@@ -239,12 +239,12 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
         ESP_LOGI(TAG, "FanMode -> %u", newMode);
         this->setFanPercentSetting(fanModeDefaultPercent(newMode));
 
-        this->updatingAttibutesInCallback = true;
+        this->updatingAttributesInCallback = true;
         updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::PercentSetting::Id, this->fanPercentSetting);
         updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedSetting::Id, this->fanPercentSetting);
         updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, this->fanPercentSetting);
         updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
-        this->updatingAttibutesInCallback = false;
+        this->updatingAttributesInCallback = false;
     }
     else if (attribute_id == FanControl::Attributes::PercentSetting::Id)
     {
@@ -255,13 +255,13 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
         ESP_LOGI(TAG, "PercentSetting -> %u", newPct);
         this->setFanPercentSetting(newPct);
 
-        this->updatingAttibutesInCallback = true;
+        this->updatingAttributesInCallback = true;
         // Map percent to FanMode and keep SpeedSetting in sync
         updateAttrEnum8(this->fanEndpointId, FC, FanControl::Attributes::FanMode::Id, percentToFanMode(this->fanPercentSetting));
         updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedSetting::Id, this->fanPercentSetting);
         updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, this->fanPercentSetting);
         updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
-        this->updatingAttibutesInCallback = false;
+        this->updatingAttributesInCallback = false;
     }
     else if (attribute_id == FanControl::Attributes::SpeedSetting::Id)
     {
@@ -272,13 +272,13 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
         ESP_LOGI(TAG, "SpeedSetting -> %u", newSpeed);
         this->setFanPercentSetting(newSpeed);
 
-        this->updatingAttibutesInCallback = true;
+        this->updatingAttributesInCallback = true;
         // Map percent to FanMode and keep SpeedSetting in sync
         updateAttrEnum8(this->fanEndpointId, FC, FanControl::Attributes::FanMode::Id, percentToFanMode(this->fanPercentSetting));
         updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::PercentSetting::Id, this->fanPercentSetting);
         updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, this->fanPercentSetting);
         updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
-        this->updatingAttibutesInCallback = false;
+        this->updatingAttributesInCallback = false;
     }
     else
     {

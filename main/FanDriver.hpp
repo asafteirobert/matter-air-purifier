@@ -40,7 +40,7 @@ private:
     uint16_t fanEndpointId  = 0;
     DisplayDriver* displayDriver = nullptr;
     uint8_t  fanPercentSetting = 0;    // 0–100
-    bool updatingAttibutesInCallback = false;
+    bool updatingAttributesInCallback = false;
 
     pcnt_unit_handle_t tachUnits[3] = {};
     esp_timer_handle_t tachTimer    = nullptr;
