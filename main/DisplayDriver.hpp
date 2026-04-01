@@ -57,5 +57,6 @@ class DisplayDriver
         bool identifyScreenDirty = true;
         TickType_t identifyStartTick = 0;
         TickType_t identifyLastInvertTick = 0;
+        bool factoryResetScreenDirty = true;
         u8g2_t display;
 };

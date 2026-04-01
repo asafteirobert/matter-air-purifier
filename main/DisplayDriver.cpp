@@ -74,6 +74,8 @@ void DisplayDriver::setActiveScreen(Screen screen)
         this->mainScreenDirty = true;
     else if (screen == Screen::Identify)
         this->identifyScreenDirty = true;
+    else if (screen == Screen::FactoryReset)
+        this->factoryResetScreenDirty = true;
 }
 
 void DisplayDriver::setSignal(int8_t rssi)
@@ -234,19 +236,25 @@ void DisplayDriver::drawIdentifyScreen()
 
 void DisplayDriver::drawFactoryResetScreen()
 {
-    u8g2_ClearBuffer(&this->display);
+    TickType_t now = xTaskGetTickCount();
 
-    u8g2_DrawXBM(&this->display, 0, 0, 32, 32, WARNING_ICON);
-    u8g2_SetFont(&this->display, u8g2_font_6x13_tr);
-    u8g2_DrawStr(&this->display, 40, 14, "Factory Reset");
+    if (this->factoryResetScreenDirty)
+    {
+        u8g2_ClearBuffer(&this->display);
 
-    u8g2_SetFont(&this->display, u8g2_font_4x6_tr);
-    u8g2_DrawStr(&this->display, 35, 25, "Factory reset triggered.");
-    u8g2_DrawStr(&this->display, 35, 31, "Release to start reset.");
+        u8g2_DrawXBM(&this->display, 0, 0, 32, 32, WARNING_ICON);
+        u8g2_SetFont(&this->display, u8g2_font_6x13_tr);
+        u8g2_DrawStr(&this->display, 40, 14, "Factory Reset");
 
-    //Todo, invert buffer every second
+        u8g2_SetFont(&this->display, u8g2_font_4x6_tr);
+        u8g2_DrawStr(&this->display, 35, 25, "Factory reset triggered.");
+        u8g2_DrawStr(&this->display, 35, 31, "Release to start reset.");
 
-    u8g2_SendBuffer(&this->display); 
+        u8g2_SendBuffer(&this->display);
+
+        this->factoryResetScreenDirty = false;
+        return;
+    }
 }
 
 void DisplayDriver::drawInfoScreen()
@@ -291,6 +299,10 @@ void DisplayDriver::screenUpdateTask(void *arg)
         else if (driver->activeScreen == Screen::Identify)
         {
             driver->drawIdentifyScreen();
+        }
+        else if (driver->activeScreen == Screen::FactoryReset)
+        {
+            driver->drawFactoryResetScreen();
         }
         vTaskDelay(driver->screenUpdateTaskDelay);
     }

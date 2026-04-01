@@ -91,6 +91,7 @@ void ButtonDriver::buttonLongPressHoldCallback(void *handle, void *userData)
     {
         ESP_LOGI(TAG, "Factory reset triggered. Release the button to start factory reset.");
         thisInstance->performFactoryReset = true;
+        thisInstance->displayDriver->setActiveScreen(DisplayDriver::Screen::FactoryReset);
     }
 }
 
