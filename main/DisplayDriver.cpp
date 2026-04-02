@@ -4,6 +4,7 @@
 #include "DisplayIcons.hpp"
 #include "Constants.hpp"
 #include "esp_app_desc.h"
+#include "qrcodegen.h"
 
 
 void DisplayDriver::init()
@@ -79,6 +80,8 @@ void DisplayDriver::setActiveScreen(Screen screen)
         this->factoryResetScreenDirty = true;
     else if (screen == Screen::Info)
         this->infoScreenDirty = true;
+    else if (screen == Screen::Comission)
+        this->comissionScreenDirty = true;
 }
 
 void DisplayDriver::setSignal(int8_t rssi)
@@ -272,6 +275,57 @@ void DisplayDriver::drawFactoryResetScreen()
     }
 }
 
+void DisplayDriver::drawComissionScreen()
+{
+    if (this->comissionScreenDirty)
+    {
+        u8g2_ClearBuffer(&this->display);
+
+        u8g2_DrawXBM(&this->display, 3, 1, MATTER_ICON_WIDTH, MATTER_ICON_WIDTH, MATTER_ICON);
+        u8g2_SetFont(&this->display, u8g2_font_5x8_tr);
+        u8g2_DrawStr(&this->display, 2, 32, "matter");
+
+        u8g2_SetFont(&this->display, u8g2_font_6x13_tr);
+        u8g2_DrawStr(&this->display, 32, 11, "Comission");
+        u8g2_SetFont(&this->display, u8g2_font_5x8_tr);
+        if (this->hasManualCode)
+            u8g2_DrawStr(&this->display, 31, 22, this->manualCode);
+            
+        this->drawQrCode();
+
+        u8g2_SendBuffer(&this->display);
+
+        this->comissionScreenDirty = false;
+        return;
+    }
+}
+
+void DisplayDriver::setCommissioningQRCode(const char *payload)
+{
+    uint8_t tempBuffer[QR_CODE_BUFFER_SIZE];
+    bool ok = qrcodegen_encodeText(payload, tempBuffer, this->qrCodeBuffer,
+        qrcodegen_Ecc_LOW, 1, 3, qrcodegen_Mask_AUTO, true);
+    if (ok)
+    {
+        this->qrCodeSize = qrcodegen_getSize(this->qrCodeBuffer);
+        this->hasQRCode = true;
+        this->infoScreenDirty = true;
+        this->comissionScreenDirty = true;
+        ESP_LOGI(TAG, "QR code generated: %s (%dx%d)", payload, this->qrCodeSize, this->qrCodeSize);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to generate QR code from: %s", payload);
+    }
+}
+
+void DisplayDriver::setCommissioningManualCode(const char *code)
+{
+    strlcpy(this->manualCode, code, sizeof(this->manualCode));
+    this->hasManualCode = true;
+    this->comissionScreenDirty = true;
+}
+
 void DisplayDriver::drawInfoScreen()
 {
     if (!this->infoScreenDirty)
@@ -311,8 +365,37 @@ void DisplayDriver::drawInfoScreen()
     snprintf(line, sizeof(line), "fw: v%s", app_desc->version);
     u8g2_DrawStr(&this->display, 1, 31, line);
 
+    this->drawQrCode();
+
     u8g2_SendBuffer(&this->display);
     this->infoScreenDirty = false;
+}
+
+void DisplayDriver::drawQrCode()
+{
+    // QR code — bottom right
+    if (this->hasQRCode)
+    {
+        int size = this->qrCodeSize;
+        int x0 = 128 - size - 2; // 1px quiet zone each side
+        int y0 = 32 - size - 2;
+
+        // White background (includes quiet zone)
+        u8g2_SetDrawColor(&this->display, 1);
+        u8g2_DrawBox(&this->display, x0, y0, size + 2, size + 2);
+
+        // Dark modules
+        u8g2_SetDrawColor(&this->display, 0);
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                if (qrcodegen_getModule(this->qrCodeBuffer, x, y))
+                    u8g2_DrawPixel(&this->display, x0 + 1 + x, y0 + 1 + y);
+            }
+        }
+        u8g2_SetDrawColor(&this->display, 1);
+    }
 }
 
 void DisplayDriver::drawMainScreenAnimation(bool force)
@@ -352,6 +435,10 @@ void DisplayDriver::screenUpdateTask(void *arg)
         else if (driver->activeScreen == Screen::Info)
         {
             driver->drawInfoScreen();
+        }
+        else if (driver->activeScreen == Screen::Comission)
+        {
+            driver->drawComissionScreen();
         }
         vTaskDelay(driver->screenUpdateTaskDelay);
     }

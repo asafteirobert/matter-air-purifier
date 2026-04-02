@@ -18,7 +18,8 @@ class DisplayDriver
             Main = 0,
             Identify,
             FactoryReset,
-            Info
+            Info,
+            Comission
         };
 
         enum class ThreadRole : uint8_t { Disabled = 0, Detached, Child, Router, Leader };
@@ -31,6 +32,8 @@ class DisplayDriver
         void setSignal(int8_t rssi);
         void setThreadRole(ThreadRole role);
         void drawSplashScreen();
+        void setCommissioningQRCode(const char *payload);
+        void setCommissioningManualCode(const char *code);
         Screen getActiveScreen() const { return this->activeScreen; }
 
     private:
@@ -42,7 +45,10 @@ class DisplayDriver
         void drawIdentifyScreen();
         void invertDisplayBuffer();
         void drawFactoryResetScreen();
+        void drawComissionScreen();
         void drawInfoScreen();
+
+        void drawQrCode();
 
         uint8_t fanPercentSetting = 255;
         uint32_t fan1RPM = 0;
@@ -61,8 +67,16 @@ class DisplayDriver
         TickType_t identifyStartTick = 0;
         TickType_t identifyLastInvertTick = 0;
         bool factoryResetScreenDirty = true;
+        bool comissionScreenDirty = true;
         bool infoScreenDirty = true;
         int8_t signalRSSI = -120;
         ThreadRole threadRole = ThreadRole::Disabled;
+        // QR code bitmap buffer — fits up to version 3 (29x29 modules)
+        static constexpr size_t QR_CODE_BUFFER_SIZE = 107;
+        uint8_t qrCodeBuffer[QR_CODE_BUFFER_SIZE] = {};
+        int qrCodeSize = 0;
+        bool hasQRCode = false;
+        char manualCode[32] = {};
+        bool hasManualCode = false;
         u8g2_t display;
 };

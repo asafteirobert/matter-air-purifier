@@ -27,6 +27,7 @@
 
 #include <app/server/CommissioningWindowManager.h>
 #include <app/server/Server.h>
+#include <nvs.h>
 
 #ifdef CONFIG_ENABLE_SET_CERT_DECLARATION_API
 #include <esp_matter_providers.h>
@@ -75,6 +76,8 @@ static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
         break;
 
     case chip::DeviceLayer::DeviceEventType::kCommissioningComplete:
+        if (displayDriver.getActiveScreen() == DisplayDriver::Screen::Comission)
+            displayDriver.setActiveScreen(DisplayDriver::Screen::Main);
         ESP_LOGI(TAG, "Commissioning complete");
         break;
 
@@ -91,12 +94,19 @@ static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
         break;
 
     case chip::DeviceLayer::DeviceEventType::kCommissioningWindowOpened:
+    {
+        displayDriver.setActiveScreen(DisplayDriver::Screen::Comission);
         ESP_LOGI(TAG, "Commissioning window opened");
         break;
+    }
 
     case chip::DeviceLayer::DeviceEventType::kCommissioningWindowClosed:
+    {
+        if (displayDriver.getActiveScreen() == DisplayDriver::Screen::Comission)
+            displayDriver.setActiveScreen(DisplayDriver::Screen::Main);
         ESP_LOGI(TAG, "Commissioning window closed");
         break;
+    }
 
     case chip::DeviceLayer::DeviceEventType::kFabricRemoved: 
     {
@@ -316,6 +326,37 @@ extern "C" void app_main()
 
     ESP_LOGI(TAG, "Matter started");
     fanDriver.syncFromMatter();
+
+    // Read commissioning QR code from factory NVS for display
+    {
+        nvs_handle_t nvs;
+        if (nvs_open("chip-factory", NVS_READONLY, &nvs) == ESP_OK)
+        {
+            char qrCodeBuf[128] = {};
+            size_t len = sizeof(qrCodeBuf);
+            if (nvs_get_str(nvs, "qrcode", qrCodeBuf, &len) == ESP_OK)
+            {
+                displayDriver.setCommissioningQRCode(qrCodeBuf);
+            }
+            else
+            {
+                ESP_LOGE(TAG, "QR code not found in factory NVS");
+            }
+
+            char manualCodeBuf[32] = {};
+            len = sizeof(manualCodeBuf);
+            if (nvs_get_str(nvs, "manualcode", manualCodeBuf, &len) == ESP_OK)
+            {
+                displayDriver.setCommissioningManualCode(manualCodeBuf);
+            }
+            else
+            {
+                ESP_LOGE(TAG, "Manual code not found in factory NVS");
+            }
+
+            nvs_close(nvs);
+        }
+    }
 
     esp_timer_handle_t signalTimer = nullptr;
     const esp_timer_create_args_t signalTimerArgs = {

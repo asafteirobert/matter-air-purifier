@@ -74,7 +74,8 @@ void ButtonDriver::buttonClickCallback(void *handle, void *userData)
 
     ButtonDriver* thisInstance = (ButtonDriver*)userData;
 
-    if (thisInstance->displayDriver->getActiveScreen() == DisplayDriver::Screen::Info)
+    if (thisInstance->displayDriver->getActiveScreen() == DisplayDriver::Screen::Info ||
+        thisInstance->displayDriver->getActiveScreen() == DisplayDriver::Screen::Comission)
     {
         ESP_LOGI(TAG, "Button click: return to main screen");
         thisInstance->displayDriver->setActiveScreen(DisplayDriver::Screen::Main);
