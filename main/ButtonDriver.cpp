@@ -88,6 +88,11 @@ void ButtonDriver::buttonClickCallback(void *handle, void *userData)
     uint32_t attributeId = FanControl::Attributes::FanMode::Id;
 
     esp_matter::attribute_t *attribute = esp_matter::attribute::get(endpointId, clusterId, attributeId);
+    if (attribute == nullptr)
+    {
+        ESP_LOGE(TAG, "Failed to get FanMode attribute");
+        return;
+    }
 
     esp_matter_attr_val_t val = esp_matter_invalid(NULL);
     esp_matter::attribute::get_val(attribute, &val);

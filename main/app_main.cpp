@@ -279,6 +279,7 @@ extern "C" void app_main()
     // Enable the MultiSpeed feature (required by Home Assistant for percentage control).
     // SpeedMax=100 makes SpeedSetting a direct 0-100 percentage.
     cluster_t *fan_cluster = cluster::get(air_purifier_endpoint, chip::app::Clusters::FanControl::Id);
+    ABORT_APP_ON_FAILURE(fan_cluster != nullptr, ESP_LOGE(TAG, "Failed to get FanControl cluster"));
     cluster::fan_control::feature::multi_speed::config_t multispeed_config;
     multispeed_config.speed_max     = 100;
     multispeed_config.speed_setting = nullable<uint8_t>();   // null – no speed set yet
