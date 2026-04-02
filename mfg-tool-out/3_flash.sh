@@ -1,5 +1,21 @@
 #!/usr/bin/env bash
 # Step 3: Flash the manufacturing partition to the device
-set -e
+set -euo pipefail
 
-esptool.py -p /dev/ttyACM0 write_flash 0x10000 /home/robert/projects/matter-air-purifier/mfg-tool-out/out/fff1_8002/613944ba-fe9f-48cb-8cb3-5e63c1b6e453/613944ba-fe9f-48cb-8cb3-5e63c1b6e453-partition.bin
+cd "$(dirname "$0")"
+
+PORT="${1:-${PORT:-/dev/ttyACM0}}"
+
+if ! command -v esptool.py &>/dev/null; then
+    echo "Error: esptool.py not found in PATH" >&2
+    exit 1
+fi
+
+PARTITION_BIN=$(ls out/fff1_8002/*/*-partition.bin 2>/dev/null | head -1)
+if [[ -z "$PARTITION_BIN" ]]; then
+    echo "Error: No partition.bin found under out/fff1_8002/. Run steps 1 and 2 first." >&2
+    exit 1
+fi
+
+echo "Flashing $PARTITION_BIN to $PORT..."
+esptool.py -p "$PORT" write_flash 0x10000 "$PARTITION_BIN"

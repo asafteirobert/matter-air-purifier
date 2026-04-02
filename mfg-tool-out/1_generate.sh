@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
 # Step 1: Generate manufacturing partition using esp-matter-mfg-tool
-set -e
+set -euo pipefail
 
-esp-matter-mfg-tool --vendor-id 0xFFF1 --product-id 0x8002 --vendor-name Twinsen --product-name "Air Purifier" --hw-ver 1 --hw-ver-str "01"
+cd "$(dirname "$0")"
+
+if ! command -v esp-matter-mfg-tool &>/dev/null; then
+    echo "Error: esp-matter-mfg-tool not found in PATH" >&2
+    exit 1
+fi
+
+esp-matter-mfg-tool \
+    --vendor-id 0xFFF1 \
+    --product-id 0x8002 \
+    --vendor-name Twinsen \
+    --product-name "Air Purifier" \
+    --hw-ver 1 \
+    --hw-ver-str "01"

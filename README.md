@@ -4,11 +4,24 @@ A CRBox air purifier that can be controlled through Matter over Thread.
 
 
 
-## 1. OTA Update
+## 1. Comissioning code generation.
+
+Use scripts in `mfg-tool-out/` to generate your own comissioning data and flash it to the device.
+
+```bash
+./0_clean.sh      # remove previous outputs
+./1_generate.sh   # generate new comissioning data
+./2_add_qrcode.sh # embed QR and manual pairing codes
+./3_flash.sh      # flash to device (default port: /dev/ttyACM0)
+```
+
+Override the port: `PORT=/dev/ttyUSB0 ./3_flash.sh` or `./3_flash.sh /dev/ttyUSB0`
+
+## 2. OTA Update through Home Assistant Python Matter Server
 - Update `CONFIG_DEVICE_SOFTWARE_VERSION` `CONFIG_DEVICE_SOFTWARE_VERSION_NUMBER` in `sdkconfig.defaults.esp32c6`
 - Update `PROJECT_VER` `PROJECT_VER_NUMBER` in CMakeLists.txt
 - Run `openssl dgst -sha256 -binary matter-air-purifier-ota.bin | base64`
-- Copy `matter-air-purifier-ota.bin` to `/addon_configs/core_matter_server/updates/matter-air-purifier-ota.ota`
+- Copy `matter-air-purifier-ota.bin` to Home Assistant `/addon_configs/core_matter_server/updates/matter-air-purifier-ota.ota`
 - Create `matter-air-purifier-ota.json` with the following content
 ```{
   "modelVersion": {
