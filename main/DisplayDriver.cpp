@@ -121,7 +121,7 @@ void DisplayDriver::drawSplashScreen()
     versionString[0] = 'v';
     strlcpy(versionString + 1, app_desc->version, sizeof(app_desc->version));
     u8g2_DrawStr(&this->display, 67, 27, versionString);
-    u8g2_DrawXBM(&this->display, 2, 3, AIR_PURIFIER_ICON_WIDTH, AIR_PURIFIER_ICON_HEIGH, AIR_PURIFIER_ICON);
+    u8g2_DrawXBM(&this->display, 2, 3, AIR_PURIFIER_ICON_WIDTH, AIR_PURIFIER_ICON_HEIGHT, AIR_PURIFIER_ICON);
     u8g2_SendBuffer(&this->display);
 }
 
