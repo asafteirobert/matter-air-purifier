@@ -46,7 +46,9 @@ Use the scripts in `mfg-tool-scripts/` to generate and flash per-device commissi
 ./3_flash.sh      # flash to device (default port: /dev/ttyACM0)
 ```
 
-Override the port: `PORT=/dev/ttyUSB0 ./3_flash.sh`
+Override the port: `PORT=/dev/ttyUSB0 ./3_flash.sh`.
+
+Commissioning QR code and manual code will be shown on the tiny screen when the commissioning window is open, but it will be hard to scan. A png of the QR code can be found in `mfg-tool-scripts/out/fff1_8002/<hash>/<hash>-qrcode.png`
 
 ## OTA Update via Home Assistant Matter Server
 
