@@ -1,27 +1,35 @@
 # Matter Air Purifier
 
-ESP32-C6 firmware for a CRBox air purifier controllable via **Matter over Thread**. Integrates well and can be comissioned in Home Assistant. Since the device is not certified, comissioning with other platforms such as Apple Home and Google Home likely does not work directly.
+ESP32-C6 firmware for a CRBox air purifier controllable via **Matter over Thread**. Integrates well and can be commissioned in Home Assistant. Since the device is not certified, commissioning with other platforms such as Apple Home and Google Home likely does not work directly.
 
 ## Hardware
 
-[images??]
+<a href="hardware/Pictures/P_20260402_160100.jpg"><img src="hardware/Pictures/P_20260402_160100.jpg" width="400" ></a>
+<a href="hardware/Pictures/P_20260402_152525.jpg"><img src="hardware/Pictures/P_20260402_152525.jpg" width="300" ></a>
+
 The CRBox is designed for 2 IKEA STARKVIND filters. It has 3 **140mm BeQuiet Pure Wings 3 High Speed** fans which offer extremely quiet operation at low speeds.
-The case is made from laser-cut MDF and smoothed 7mm pine strips, glued with epoxy. A small 3D printed part is used as a front panel. It's powerd though USB C. It requires a 12V capable USB-PD power supply(IKEA 20W SJÖSS works great).
+The case is made from laser-cut MDF and smoothed 7mm pine strips, glued with epoxy. A small 3D printed part is used as a front panel. It's powered though USB C. It requires a 12V capable USB-PD power supply (IKEA 20W SJÖSS works great).
+
+## Performance
+![PM2.5 graph at 100% speed](hardware/Pictures/PM2.5%20graph%20max%20speed.png "PM2.5 graph at 100% speed")
+Limited testing shows the Air Purifier can bring an extremely polluted room from ~400 ug/m3 PM2.5 to <10 ug/m3
+- in 4 hours at 12% speed.
+- in 53 minutes at 50% speed.
+- in 17 minutes at 100% speed.
 
 ## Making your own
-[image open?]
-This is a hobby project. I'm sharing this to serve as inspiration for anyone that wants to build something similar. Assembly is quite involved and I'm not providing step by step instructions but I'm sharing all the relevant files:
-- Autodesk Fusion project
-- DXF files for Laser cut MDF
-- Front panel model for 3D printing
-- Schematic and PCB
+<a href="hardware/Pictures/P_20260328_112051.jpg"><img src="hardware/Pictures/P_20260328_112051.jpg" width="400" ></a>
+<a href="hardware/Pictures/P_20260402_152141.jpg"><img src="hardware/Pictures/P_20260402_152141.jpg" width="300" ></a>
+<a href="hardware/Pictures/P_20260402_152229.jpg"><img src="hardware/Pictures/P_20260402_152229.jpg" width="300" ></a>
+
+This is a hobby project. I'm sharing this to serve as inspiration for anyone that wants to build something similar. Assembly is quite involved and I'm not providing step by step instructions but I'm sharing all the relevant files. See [hardware](hardware/)
 
 ## Features
 
 - **Matter Air Purifier device type** — Fan Control cluster with Off/Low/Medium/High modes and 0–100% speed control
 - **3-fan control** — PWM speed control (25 kHz) with per-fan RPM tachometer feedback
 - **OLED display** — 128×32 screen showing fan speed, RPM, signal bars, QR code for commissioning, and info/reset screens
-- **Physical buttons** — Short press toggles on/off; 2 second long press shows info screen. 8 second long press triggers factory reset.
+- **Physical buttons** — Short press toggles Off/Low/Medium/High; 2 second long press shows info screen. 8 second long press triggers factory reset.
 - **Thread-only** — Runs on the ESP32-C6's 802.15.4 radio; WiFi disabled
 - **OTA updates** — Firmware updates via Home Assistant Matter Server
 - **Factory NVS partition** — Stores per-device commissioning codes, QR codes
