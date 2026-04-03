@@ -1,0 +1,15 @@
+key,type,encoding,value
+chip-factory,namespace,,
+discriminator,data,u32,2458
+iteration-count,data,u32,10000
+salt,data,string,CpgTCc8W+Rcqdphdbbo67YKkOLRqsWQs+q+SB6Ub92I=
+vendor-id,data,u32,65521
+vendor-name,data,string,Twinsen
+product-id,data,u32,32770
+product-name,data,string,Air Purifier
+hardware-ver,data,u32,1
+hw-ver-str,data,string,01
+serial-num,data,string,d155618ca8cd4e3e44d1683ac4f1faaf
+verifier,data,string,hWKX0owqHqvmHICCKsJPmoxauj6mCclDcPf6ccEDxU0ENnAkcprttOtbRf4fQ4uoTI6fEox0D49rsdVOc2k7ParbnqoPTJrCTLCj90Uca5rc46i5cfkHWGtDyjAfElME3g==
+qrcode,data,string,MT:06PS0KQS02RINU6X120
+manualcode,data,string,2277-165-9195
