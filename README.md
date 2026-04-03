@@ -1,6 +1,6 @@
 # Matter Air Purifier
 
-ESP32-C6 firmware for a CRBox air purifier controllable via **Matter over Thread**. Integrates well and can be commissioned in Home Assistant. Since the device is not certified, commissioning with other platforms such as Apple Home and Google Home likely does not work directly.
+Firmware for a CRBox air purifier built around the Seeed Studio XIAO ESP32C6. Controllable via **Matter over Thread**. Integrates well and can be commissioned in Home Assistant. Since the device is not certified, commissioning with other platforms such as Apple Home and Google Home likely does not work directly.
 
 ## Hardware
 
