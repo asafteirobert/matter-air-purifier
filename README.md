@@ -12,6 +12,7 @@ The case is made from laser-cut MDF and smoothed 7mm pine strips, glued with epo
 
 ## Performance
 ![PM2.5 graph at 100% speed](hardware/Pictures/PM2.5%20graph%20max%20speed.png "PM2.5 graph at 100% speed")
+
 Limited testing shows the Air Purifier can bring an extremely polluted room from ~400 ug/m3 PM2.5 to <10 ug/m3
 - in 4 hours at 12% speed.
 - in 53 minutes at 50% speed.
