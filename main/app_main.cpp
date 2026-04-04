@@ -7,14 +7,16 @@
 #include "ButtonDriver.hpp"
 #include "FanDriver.hpp"
 #include "DisplayDriver.hpp"
-#include "StandaloneMode.hpp"
+#include "WiFiManager.hpp"
+#include "HttpServer.hpp"
 
 static const char *TAG = "app_main";
 
 ButtonDriver buttonDriver;
 FanDriver fanDriver;
 DisplayDriver displayDriver;
-StandaloneMode standaloneMode;
+WiFiManager wifiManager;
+HttpServer httpServer;
 
 // ── Shared startup helpers ────────────────────────────────────────────────────
 
@@ -50,10 +52,11 @@ extern "C" void app_main()
     buttonDriver.init(0, displayDriver, fanDriver);
     fanDriver.init(0, displayDriver);
 
-    standaloneMode.init(fanDriver, displayDriver);
+    wifiManager.init();
+    httpServer.start(&fanDriver, &wifiManager);
 
     ESP_LOGI(TAG, "Standalone mode running – AP=%d  IP=%s",
-             standaloneMode.isAPMode(), standaloneMode.isAPMode() ? "192.168.4.1" : "");
+             wifiManager.isAPMode(), wifiManager.isAPMode() ? "192.168.4.1" : "");
 
     vTaskDelay(pdMS_TO_TICKS(2000));
     displayDriver.startTask();
