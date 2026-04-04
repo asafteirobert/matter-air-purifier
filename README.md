@@ -31,7 +31,7 @@ This is a hobby project. I'm sharing this to serve as inspiration for anyone tha
 - **3-fan control** — PWM speed control (25 kHz) with per-fan RPM tachometer feedback
 - **OLED display** — 128×32 screen showing fan speed, RPM, signal bars, QR code for commissioning, and info/reset screens
 - **Physical buttons** — Short press toggles Off/Low/Medium/High; 2 second long press shows info screen. 8 second long press triggers factory reset.
-- **Thread-only** — Runs on the ESP32-C6's 802.15.4 radio; WiFi disabled
+- **Thread-only** — Runs on the ESP32-C6's 802.15.4 radio; WiFi disabled (see [Enabling WiFi](#enabling-wifi-alongside-thread))
 - **OTA updates** — Firmware updates via Home Assistant Matter Server
 - **Factory NVS partition** — Stores per-device commissioning codes, QR codes
 
@@ -80,6 +80,29 @@ Commissioning QR code and manual code will be shown on the tiny screen when the 
    }
    ```
 6. Trigger the update from the Matter Server web UI by selecting the node in the sidebar.
+
+## Enabling WiFi alongside Thread
+
+The ESP32-C6 has separate radios for 802.15.4 (Thread) and WiFi, so both can run simultaneously. WiFi is disabled by default because it increases RAM/flash usage and the WiFi radio stays powered even when idle (no credentials commissioned).
+
+To enable WiFi as a secondary network interface:
+
+1. In `sdkconfig.defaults.esp32c6`, change:
+   ```
+   CONFIG_ENABLE_WIFI_STATION=n
+   ```
+   to:
+   ```
+   CONFIG_ENABLE_WIFI_STATION=y
+   ```
+
+2. Switch mDNS to the platform implementation (required for Thread DNS-SD):
+   ```
+   CONFIG_USE_MINIMAL_MDNS=n
+   ```
+   > **Note:** The platform mDNS backend (`ESP32DnssdImpl.cpp`) currently has build errors (ignored `CHIP_ERROR` returns treated as fatal by `-Werror`). If the build fails, set `CONFIG_USE_MINIMAL_MDNS=y` as a workaround until the upstream SDK is fixed.
+
+3. Rebuild and reflash.
 
 ## AI Disclaimer
 This project was coded with heavy use of Claude Code

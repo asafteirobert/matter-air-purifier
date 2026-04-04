@@ -13,24 +13,24 @@ CONFIG_OPENTHREAD_SRP_CLIENT=y
 CONFIG_OPENTHREAD_DNS_CLIENT=y
 CONFIG_OPENTHREAD_LOG_LEVEL_DYNAMIC=n
 CONFIG_OPENTHREAD_LOG_LEVEL_NOTE=y
-CONFIG_OPENTHREAD_CLI=n
 
-# Disable lwip ipv6 autoconfig
+# Disable lwip ipv6 autoconfig (Thread manages IPv6 routing)
 CONFIG_LWIP_IPV6_AUTOCONFIG=n
 
 # Use a custom partition table
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
-# LwIP config for OpenThread
+# LwIP config
 CONFIG_LWIP_IPV6_NUM_ADDRESSES=8
 CONFIG_LWIP_MULTICAST_PING=y
 
-# MDNS platform
+# Use platform mDNS (required for Thread DNS-SD)
 CONFIG_USE_MINIMAL_MDNS=n
 CONFIG_ENABLE_EXTENDED_DISCOVERY=y
 
-# Disable STA for ESP32C6
+# WiFi station disabled - Thread is the only network interface
+# To enable WiFi alongside Thread, see README.md
 CONFIG_ENABLE_WIFI_STATION=n
 
 # Button
