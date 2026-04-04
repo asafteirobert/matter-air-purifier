@@ -5,3 +5,4 @@ dependencies:
     - if: idf_version >=5.0
     - if: target in [esp32c2]
   espressif/button: ^4.1.6
+  espressif/mdns: ">=1.0.0"

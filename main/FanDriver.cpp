@@ -1,60 +1,7 @@
 #include "FanDriver.hpp"
 
 #include <esp_log.h>
-#ifndef CONFIG_STANDALONE_MODE
-#include <esp_matter.h>
-#endif
 #include <nvs.h>
-
-#ifndef CONFIG_STANDALONE_MODE
-// ── Range mapping for kOffLowMedHigh (Matter spec §4.4.6.3.1 / §4.4.6.6.1) ───
-//
-//  PercentSetting / SpeedSetting (SpeedMax=100, so both are identical values):
-// The exact breakpoints are implementation-defined; the spec's own illustrative
-// example uses equal thirds, which we adopt here.
-
-static uint8_t percentToFanMode(uint8_t pct)
-{
-    using namespace chip::app::Clusters;
-    if (pct == 0)   return (uint8_t)FanControl::FanModeEnum::kOff;
-    if (pct <= 33)  return (uint8_t)FanControl::FanModeEnum::kLow;
-    if (pct <= 66)  return (uint8_t)FanControl::FanModeEnum::kMedium;
-    return                 (uint8_t)FanControl::FanModeEnum::kHigh;
-}
-
-// Default PercentSetting when switching to a mode without an existing in-range value.
-// We use the top of each range so the fan runs at full power for the selected mode.
-static uint8_t fanModeDefaultPercent(uint8_t fanMode)
-{
-    using namespace chip::app::Clusters;
-    switch ((FanControl::FanModeEnum)fanMode)
-    {
-    case FanControl::FanModeEnum::kLow:    return 33;
-    case FanControl::FanModeEnum::kMedium: return 66;
-    case FanControl::FanModeEnum::kHigh:   return 100;
-    default:                               return 0;
-    }
-}
-
-// ── Helpers to update single attributes ──────── (Matter-only)
-
-static void updateAttrU8(uint16_t endpoint, uint32_t cluster, uint32_t attr, uint8_t newVal)
-{
-    esp_matter_attr_val_t v = esp_matter_uint8(newVal);
-    esp_matter::attribute::update(endpoint, cluster, attr, &v);
-}
-
-static void updateAttrEnum8(uint16_t endpoint, uint32_t cluster, uint32_t attr, uint8_t newVal)
-{
-    esp_matter_attr_val_t v = esp_matter_enum8(newVal);
-    esp_matter::attribute::update(endpoint, cluster, attr, &v);
-}
-static void updateAttrNullableU8(uint16_t endpoint, uint32_t cluster, uint32_t attr, uint8_t newVal)
-{
-    esp_matter_attr_val_t v = esp_matter_nullable_uint8(nullable<uint8_t>(newVal));
-    esp_matter::attribute::update(endpoint, cluster, attr, &v);
-}
-#endif // !CONFIG_STANDALONE_MODE
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -150,40 +97,6 @@ void FanDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
     this->displayDriver->setFilterUsage(this->filterUsageCounter);
 }
 
-#ifndef CONFIG_STANDALONE_MODE
-// ── Sync state from Matter NVS on startup ────────────────────────────────────
-
-void FanDriver::syncFromMatter()
-{
-    using namespace chip::app::Clusters;
-
-    esp_matter_attr_val_t val = {};
-    esp_err_t err = esp_matter::attribute::get_val(
-        this->fanEndpointId,
-        FanControl::Id,
-        FanControl::Attributes::FanMode::Id,
-        &val);
-
-    if (err != ESP_OK)
-    {
-        ESP_LOGW(TAG, "syncFromMatter: get_val failed (%d)", err);
-        return;
-    }
-
-    uint8_t pct = fanModeDefaultPercent(val.val.u8);
-    ESP_LOGI(TAG, "syncFromMatter: FanMode=%u -> fanPercentSetting=%u", val.val.u8, pct);
-    this->setFanPercentSetting(pct);
-
-    const uint32_t FC = FanControl::Id;
-    this->updatingAttributesInCallback = true;
-    updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::PercentSetting::Id, this->fanPercentSetting);
-    updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedSetting::Id, this->fanPercentSetting);
-    updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, this->fanPercentSetting);
-    updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
-    this->updatingAttributesInCallback = false;
-}
-#endif // !CONFIG_STANDALONE_MODE
-
 // ── Tachometer sampling ───────────────────────────────────────────────────────
 
 void FanDriver::tachTimerCb(void *arg)
@@ -267,98 +180,6 @@ void FanDriver::resetFilterCounter()
     ESP_LOGI(TAG, "Filter usage counter reset");
 }
 
-// ── Attribute update callback (Matter only) ───────────────────────────────────
-
-#ifndef CONFIG_STANDALONE_MODE
-esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type,
-                                     uint16_t endpoint_id,
-                                     uint32_t cluster_id,
-                                     uint32_t attribute_id,
-                                     esp_matter_attr_val_t *val)
-{
-    using namespace chip::app::Clusters;
-
-    if (type != esp_matter::attribute::PRE_UPDATE)
-        return ESP_OK;
-
-    if (endpoint_id != this->fanEndpointId)
-        return ESP_OK;
-
-    if (val == nullptr)
-    {
-        ESP_LOGE(TAG, "attributeUpdate: val is null");
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    if (cluster_id != FanControl::Id)
-        return ESP_OK;
-
-    const uint32_t FC = FanControl::Id;
-
-    if (this->updatingAttributesInCallback)
-        return ESP_OK;
-
-    if (attribute_id == FanControl::Attributes::FanMode::Id)
-    {
-        // Writing On is deprecated — treat as High (spec §4.4.6.1).
-        // Patch val so the framework stores kHigh, not kOn.
-        if (val->val.u8 == (uint8_t)FanControl::FanModeEnum::kOn)
-            val->val.u8 = (uint8_t)FanControl::FanModeEnum::kHigh;
-        uint8_t newMode = val->val.u8;
-
-        ESP_LOGI(TAG, "FanMode -> %u", newMode);
-        this->setFanPercentSetting(fanModeDefaultPercent(newMode));
-
-        this->updatingAttributesInCallback = true;
-        updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::PercentSetting::Id, this->fanPercentSetting);
-        updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedSetting::Id, this->fanPercentSetting);
-        updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, this->fanPercentSetting);
-        updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
-        this->updatingAttributesInCallback = false;
-    }
-    else if (attribute_id == FanControl::Attributes::PercentSetting::Id)
-    {
-        const uint8_t newPct = val->val.u8;
-        if (newPct == 0xFF)
-            return ESP_OK;   // null write → SHALL NOT change (spec §4.4.6.3)
-
-        ESP_LOGI(TAG, "PercentSetting -> %u", newPct);
-        this->setFanPercentSetting(newPct);
-
-        this->updatingAttributesInCallback = true;
-        // Map percent to FanMode and keep SpeedSetting in sync
-        updateAttrEnum8(this->fanEndpointId, FC, FanControl::Attributes::FanMode::Id, percentToFanMode(this->fanPercentSetting));
-        updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedSetting::Id, this->fanPercentSetting);
-        updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, this->fanPercentSetting);
-        updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
-        this->updatingAttributesInCallback = false;
-    }
-    else if (attribute_id == FanControl::Attributes::SpeedSetting::Id)
-    {
-        const uint8_t newSpeed = val->val.u8;
-        if (newSpeed == 0xFF)
-            return ESP_OK;   // null write → SHALL NOT change (spec §4.4.6.6)
-
-        ESP_LOGI(TAG, "SpeedSetting -> %u", newSpeed);
-        this->setFanPercentSetting(newSpeed);
-
-        this->updatingAttributesInCallback = true;
-        // Map percent to FanMode and keep SpeedSetting in sync
-        updateAttrEnum8(this->fanEndpointId, FC, FanControl::Attributes::FanMode::Id, percentToFanMode(this->fanPercentSetting));
-        updateAttrNullableU8(this->fanEndpointId, FC, FanControl::Attributes::PercentSetting::Id, this->fanPercentSetting);
-        updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::PercentCurrent::Id, this->fanPercentSetting);
-        updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
-        this->updatingAttributesInCallback = false;
-    }
-    else
-    {
-        return ESP_OK;  // Not a handled attribute
-    }
-
-    return ESP_OK;
-}
-#endif // !CONFIG_STANDALONE_MODE
-
 // ── Apply hardware state ──────────────────────────────────────────────────────
 
 void FanDriver::applyFanState()
@@ -370,4 +191,3 @@ void FanDriver::applyFanState()
     ledc_update_duty(PWM_SPEED_MODE, PWM_CHANNEL);
     ESP_LOGI(TAG, "Fan PWM: %u%% (duty %lu/%lu)", this->fanPercentSetting, duty, PWM_MAX_DUTY);
 }
-

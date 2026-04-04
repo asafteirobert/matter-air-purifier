@@ -1,5 +1,4 @@
 #include "StandaloneMode.hpp"
-#ifdef CONFIG_STANDALONE_MODE
 #include "FanDriver.hpp"
 #include "DisplayDriver.hpp"
 
@@ -473,5 +472,3 @@ esp_err_t StandaloneMode::init(FanDriver &fanDriver, DisplayDriver &displayDrive
     this->startHTTPServer();
     return ESP_OK;
 }
-
-#endif // CONFIG_STANDALONE_MODE

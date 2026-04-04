@@ -5,9 +5,6 @@
 #include <esp_err.h>
 #include <esp_log.h>
 #include <nvs.h>
-#ifndef CONFIG_STANDALONE_MODE
-#include <esp_matter.h>
-#endif
 
 void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver, FanDriver& fanDriver)
 {
@@ -25,14 +22,18 @@ void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver, Fa
     };
     const button_gpio_config_t boardButtonGpioConfig =
     {
-        .gpio_num = BOARD_BUTTON_GPIO,
-        .active_level = 0,
+        .gpio_num           = BOARD_BUTTON_GPIO,
+        .active_level       = 0,
+        .enable_power_save  = false,
+        .disable_pull       = false,
     };
 
     const button_gpio_config_t panelButtonGpioConfig =
     {
-        .gpio_num = PANEL_BUTTON_GPIO,
-        .active_level = 0,
+        .gpio_num           = PANEL_BUTTON_GPIO,
+        .active_level       = 0,
+        .enable_power_save  = false,
+        .disable_pull       = false,
     };
 
     if (iot_button_new_gpio_device(&buttonConfig, &boardButtonGpioConfig, &this->boardButtonHandle) != ESP_OK)
@@ -72,8 +73,10 @@ void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver, Fa
     // Filter reset button
     const button_gpio_config_t filterResetGpioConfig =
     {
-        .gpio_num    = FILTER_RESET_BUTTON_GPIO,
-        .active_level = 0,
+        .gpio_num           = FILTER_RESET_BUTTON_GPIO,
+        .active_level       = 0,
+        .enable_power_save  = false,
+        .disable_pull       = false,
     };
     if (iot_button_new_gpio_device(&buttonConfig, &filterResetGpioConfig, &this->filterResetButtonHandle) != ESP_OK)
     {
@@ -104,36 +107,12 @@ void ButtonDriver::buttonClickCallback(void *handle, void *userData)
 
     ESP_LOGI(TAG, "Button click: toggle fan");
 
-#ifdef CONFIG_STANDALONE_MODE
-    // In standalone mode, toggle fan speed directly without Matter
     uint8_t cur = thisInstance->fanDriver->getFanPercentSetting();
     uint8_t next = (cur == 0)   ? 33
                  : (cur <= 33)  ? 66
                  : (cur <= 66)  ? 100
                  : 0;
     thisInstance->fanDriver->setFanPercentSetting(next);
-#else
-    using namespace chip::app::Clusters;
-    uint16_t endpointId = thisInstance->fanEndpointId;
-    uint32_t clusterId = FanControl::Id;
-    uint32_t attributeId = FanControl::Attributes::FanMode::Id;
-
-    esp_matter::attribute_t *attribute = esp_matter::attribute::get(endpointId, clusterId, attributeId);
-    if (attribute == nullptr)
-    {
-        ESP_LOGE(TAG, "Failed to get FanMode attribute");
-        return;
-    }
-
-    esp_matter_attr_val_t val = esp_matter_invalid(NULL);
-    esp_matter::attribute::get_val(attribute, &val);
-    // Toggle between presets
-    val.val.u8 = (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kOff)    ? (uint8_t)FanControl::FanModeEnum::kLow
-               : (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kLow)    ? (uint8_t)FanControl::FanModeEnum::kMedium
-               : (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kMedium) ? (uint8_t)FanControl::FanModeEnum::kHigh
-               : (uint8_t)FanControl::FanModeEnum::kOff;
-    esp_matter::attribute::update(endpointId, clusterId, attributeId, &val);
-#endif
 }
 
 void ButtonDriver::buttonLongPressInfoCallback(void *handle, void *userData)
@@ -157,8 +136,6 @@ void ButtonDriver::buttonPressUpCallback(void *handle, void *userData)
     if (thisInstance->performFactoryReset)
     {
         ESP_LOGI(TAG, "Starting factory reset");
-#ifdef CONFIG_STANDALONE_MODE
-        // In standalone mode, erase WiFi credentials and reboot
         nvs_handle_t nvs;
         if (nvs_open("standalone", NVS_READWRITE, &nvs) == ESP_OK)
         {
@@ -167,9 +144,6 @@ void ButtonDriver::buttonPressUpCallback(void *handle, void *userData)
             nvs_close(nvs);
         }
         esp_restart();
-#else
-        esp_matter::factory_reset();
-#endif
         thisInstance->performFactoryReset = false;
     }
 }

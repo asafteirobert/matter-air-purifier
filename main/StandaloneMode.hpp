@@ -1,6 +1,4 @@
 #pragma once
-#include "sdkconfig.h"
-#ifdef CONFIG_STANDALONE_MODE
 
 #include <esp_err.h>
 #include <esp_http_server.h>
@@ -55,4 +53,3 @@ private:
     esp_event_handler_instance_t evtHandlerGotIp = nullptr;
 };
 
-#endif // CONFIG_STANDALONE_MODE
