@@ -31,11 +31,15 @@ public:
                               uint32_t attribute_id,
                               esp_matter_attr_val_t *val);
     void setFanPercentSetting(uint8_t newSetting);
+    void resetFilterCounter();
 
 private:
     void applyFanState();
     void readAndSendRpm();
+    void saveFilterCounter();
     static void tachTimerCb(void *arg);
+
+    static constexpr uint16_t NVS_FLUSH_INTERVAL = 300;  // save every 300 tach callbacks (~10 min)
 
     uint16_t fanEndpointId  = 0;
     DisplayDriver* displayDriver = nullptr;
@@ -44,4 +48,7 @@ private:
 
     pcnt_unit_handle_t tachUnits[3] = {};
     esp_timer_handle_t tachTimer    = nullptr;
+
+    uint64_t filterUsageCounter = 0;
+    uint16_t nvsFlushCounter    = 0;
 };

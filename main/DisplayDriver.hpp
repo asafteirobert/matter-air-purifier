@@ -31,6 +31,7 @@ class DisplayDriver
         void setActiveScreen(Screen screen);
         void setSignal(int8_t rssi);
         void setThreadRole(ThreadRole role);
+        void setFilterUsage(uint64_t counter);
         void drawSplashScreen();
         void setCommissioningQRCode(const char *payload);
         void setCommissioningManualCode(const char *code);
@@ -71,6 +72,7 @@ class DisplayDriver
         bool infoScreenDirty = true;
         int8_t signalRSSI = -120;
         ThreadRole threadRole = ThreadRole::Disabled;
+        uint64_t filterUsageCounter = 0;
         // QR code bitmap buffer — fits up to version 3 (29x29 modules)
         static constexpr size_t QR_CODE_BUFFER_SIZE = 107;
         uint8_t qrCodeBuffer[QR_CODE_BUFFER_SIZE] = {};

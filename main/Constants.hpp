@@ -10,6 +10,9 @@
 /** interaction button (active-LOW, internal pull-up) */
 #define PANEL_BUTTON_GPIO     GPIO_NUM_23
 
+/** filter was changed button, reset the filter counter (active-LOW, internal pull-up) */
+#define FILTER_RESET_BUTTON_GPIO     GPIO_NUM_2
+
 /** PC fan PWM */
 #define FAN_PWM_GPIO     GPIO_NUM_18
 
@@ -36,6 +39,9 @@
 
 /** OLED screen SCL Pin*/
 #define OLED_SCL_GPIO GPIO_NUM_21
+
+/** Filter usage maximum: 1 year at 600 RPM, 3 fans, 2 pulses/rev */
+#define FILTER_MAX_USAGE (600ULL * 3ULL * 2ULL * 60ULL * 24ULL * 365ULL)
 
 
 

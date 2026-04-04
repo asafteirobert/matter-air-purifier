@@ -6,6 +6,12 @@
 #include "esp_app_desc.h"
 #include "qrcodegen.h"
 
+void DisplayDriver::setFilterUsage(uint64_t counter)
+{
+    this->filterUsageCounter = counter;
+    this->infoScreenDirty = true;
+}
+
 
 void DisplayDriver::init()
 {
@@ -360,10 +366,18 @@ void DisplayDriver::drawInfoScreen()
     snprintf(line, sizeof(line), "Role: %s", roleStr);
     u8g2_DrawStr(&this->display, 1, 23, line);
 
-    // Firmware version
-    const esp_app_desc_t *app_desc = esp_app_get_description();
-    snprintf(line, sizeof(line), "fw: v%s", app_desc->version);
-    u8g2_DrawStr(&this->display, 1, 31, line);
+    // Filter usage
+    uint32_t filterPct = (uint32_t)std::min(
+        this->filterUsageCounter * 100ULL / FILTER_MAX_USAGE, (uint64_t)999);
+    u8g2_DrawStr(&this->display, 1, 31, "Filter:");
+    int barX = 1 + (int)u8g2_GetStrWidth(&this->display, "Filter:") + 2;
+    // Progress bar (44×6; inner fill up to 42px)
+    u8g2_DrawFrame(&this->display, barX, 25, 44, 6);
+    uint8_t barFill = (uint8_t)(std::min((uint64_t)filterPct, (uint64_t)100) * 42ULL / 100);
+    if (barFill > 0)
+        u8g2_DrawBox(&this->display, barX + 1, 26, barFill, 4);
+    snprintf(line, sizeof(line), "%lu%%", (unsigned long)filterPct);
+    u8g2_DrawStr(&this->display, barX + 44 + 2, 31, line);
 
     this->drawQrCode();
 

@@ -2,6 +2,7 @@
 
 #include <esp_log.h>
 #include <esp_matter.h>
+#include <nvs.h>
 
 // ── Range mapping for kOffLowMedHigh (Matter spec §4.4.6.3.1 / §4.4.6.6.1) ───
 //
@@ -134,6 +135,16 @@ void FanDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
     };
     ESP_ERROR_CHECK(esp_timer_create(&timer_args, &this->tachTimer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(this->tachTimer, RPM_READ_INTERVAL_MS * 1000 /* µs */));
+
+    // Load persisted filter usage counter
+    nvs_handle_t nvs;
+    if (nvs_open("app_data", NVS_READONLY, &nvs) == ESP_OK)
+    {
+        nvs_get_u64(nvs, "filter_cnt", &this->filterUsageCounter);
+        nvs_close(nvs);
+    }
+    ESP_LOGI(TAG, "Filter usage counter loaded: %llu", (unsigned long long)this->filterUsageCounter);
+    this->displayDriver->setFilterUsage(this->filterUsageCounter);
 }
 
 // ── Sync state from Matter NVS on startup ────────────────────────────────────
@@ -196,6 +207,43 @@ void FanDriver::readAndSendRpm()
     // 4-pin fans emit 2 pulses per revolution; sampled over 1 second.
     // RPM = (pulses / 2) * 60 = pulses * 30
     this->displayDriver->setRPM(counts[0] * 30 * 1000 / RPM_READ_INTERVAL_MS, counts[1] * 30 * 1000 / RPM_READ_INTERVAL_MS, counts[2] * 30 * 1000 / RPM_READ_INTERVAL_MS);
+
+    // Accumulate all pulse counts into the filter usage counter
+    this->filterUsageCounter += (uint64_t)(counts[0] + counts[1] + counts[2]);
+    this->displayDriver->setFilterUsage(this->filterUsageCounter);
+
+    // Persist to NVS periodically
+    if (++this->nvsFlushCounter >= NVS_FLUSH_INTERVAL)
+    {
+        this->nvsFlushCounter = 0;
+        this->saveFilterCounter();
+    }
+}
+
+void FanDriver::saveFilterCounter()
+{
+    nvs_handle_t nvs;
+    esp_err_t err = nvs_open("app_data", NVS_READWRITE, &nvs);
+    if (err == ESP_OK)
+    {
+        nvs_set_u64(nvs, "filter_cnt", this->filterUsageCounter);
+        nvs_commit(nvs);
+        nvs_close(nvs);
+        ESP_LOGI(TAG, "Filter usage counter saved: %llu", (unsigned long long)this->filterUsageCounter);
+    }
+    else
+    {
+        ESP_LOGW(TAG, "Failed to open NVS for filter counter save: %d", err);
+    }
+}
+
+void FanDriver::resetFilterCounter()
+{
+    this->filterUsageCounter = 0;
+    this->nvsFlushCounter = 0;
+    this->saveFilterCounter();
+    this->displayDriver->setFilterUsage(0);
+    ESP_LOGI(TAG, "Filter usage counter reset");
 }
 
 // ── Attribute update callback ─────────────────────────────────────────────────

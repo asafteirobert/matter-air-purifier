@@ -291,7 +291,7 @@ extern "C" void app_main()
     ESP_LOGI(TAG, "Air purifier endpoint created with endpoint id: %u", fanEndpointId);
 
     // Initialize drivers
-    buttonDriver.init(fanEndpointId, displayDriver);
+    buttonDriver.init(fanEndpointId, displayDriver, fanDriver);
     fanDriver.init(fanEndpointId, displayDriver);
 
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD && CHIP_DEVICE_CONFIG_ENABLE_WIFI_STATION

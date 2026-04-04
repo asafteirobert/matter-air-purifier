@@ -1,14 +1,16 @@
 #include "ButtonDriver.hpp"
+#include "FanDriver.hpp"
 #include "Constants.hpp"
 
 #include <esp_err.h>
 #include <esp_log.h>
 #include <esp_matter.h>
 
-void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
+void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver, FanDriver& fanDriver)
 {
     this->fanEndpointId = fanEndpointId;
     this->displayDriver = &displayDriver;
+    this->fanDriver     = &fanDriver;
 
     this->infoScreenEventArgs = { .long_press = { .press_time = 2000 } };
     this->factoryResetEventArgs = { .long_press = { .press_time = 8000 } };
@@ -61,6 +63,23 @@ void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to set button callbacks");
+        return;
+    }
+
+    // Filter reset button
+    const button_gpio_config_t filterResetGpioConfig =
+    {
+        .gpio_num    = FILTER_RESET_BUTTON_GPIO,
+        .active_level = 0,
+    };
+    if (iot_button_new_gpio_device(&buttonConfig, &filterResetGpioConfig, &this->filterResetButtonHandle) != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to create filter reset button device");
+        return;
+    }
+    if (iot_button_register_cb(this->filterResetButtonHandle, BUTTON_SINGLE_CLICK, NULL, filterResetButtonCallback, this) != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to set filter reset button callback");
         return;
     }
 
@@ -128,4 +147,11 @@ void ButtonDriver::buttonPressUpCallback(void *handle, void *userData)
         esp_matter::factory_reset();
         thisInstance->performFactoryReset = false;
     }
+}
+
+void ButtonDriver::filterResetButtonCallback(void *handle, void *userData)
+{
+    ButtonDriver* thisInstance = (ButtonDriver*)userData;
+    ESP_LOGI(TAG, "Filter reset button pressed – resetting filter usage counter");
+    thisInstance->fanDriver->resetFilterCounter();
 }
