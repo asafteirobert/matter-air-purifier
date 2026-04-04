@@ -2,6 +2,8 @@
 
 Firmware for a CRBox air purifier built around the Seeed Studio XIAO ESP32C6. Controlled via a **web UI over WiFi** — no Matter or Thread required. Integrates with any network through a standard browser.
 
+![Web UI](hardware/Pictures/WebUI%20screenshot.png " Web UI")
+
 ## Hardware
 
 <a href="hardware/Pictures/P_20260402_160100.jpg"><img src="hardware/Pictures/P_20260402_160100.jpg" width="400" ></a>
