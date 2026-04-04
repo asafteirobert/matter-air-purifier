@@ -2,6 +2,8 @@
 
 Firmware for a CRBox air purifier built around the Seeed Studio XIAO ESP32C6. Controllable via **Matter over Thread**. Integrates well and can be commissioned in Home Assistant. Since the device is not certified, commissioning with other platforms such as Apple Home and Google Home likely does not work directly.
 
+> For an experimental version without Matter that hosts a local web server with a web UI, see the [standalone-mode](../../tree/standalone-mode) branch.
+
 ## Hardware
 
 <a href="hardware/Pictures/P_20260402_160100.jpg"><img src="hardware/Pictures/P_20260402_160100.jpg" width="400" ></a>
