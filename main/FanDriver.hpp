@@ -1,7 +1,9 @@
 #pragma once
 
 #include <esp_err.h>
+#ifndef CONFIG_STANDALONE_MODE
 #include <esp_matter.h>
+#endif
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "driver/pulse_cnt.h"
@@ -24,14 +26,21 @@ class FanDriver
 
 public:
     void init(uint16_t fanEndpointId, DisplayDriver& displayDriver);
+    void setFanPercentSetting(uint8_t newSetting);
+    void resetFilterCounter();
+
+    uint8_t  getFanPercentSetting() const { return this->fanPercentSetting; }
+    uint16_t getFilterPercent() const;
+    void     getRPM(uint32_t &rpm1, uint32_t &rpm2, uint32_t &rpm3) const;
+
+#ifndef CONFIG_STANDALONE_MODE
     void syncFromMatter();
     esp_err_t attributeUpdate(esp_matter::attribute::callback_type_t type,
                               uint16_t endpoint_id,
                               uint32_t cluster_id,
                               uint32_t attribute_id,
                               esp_matter_attr_val_t *val);
-    void setFanPercentSetting(uint8_t newSetting);
-    void resetFilterCounter();
+#endif
 
 private:
     void applyFanState();
@@ -44,7 +53,10 @@ private:
     uint16_t fanEndpointId  = 0;
     DisplayDriver* displayDriver = nullptr;
     uint8_t  fanPercentSetting = 0;    // 0–100
+    uint32_t lastRPM[3]        = {};   // last measured RPM per fan
+#ifndef CONFIG_STANDALONE_MODE
     bool updatingAttributesInCallback = false;
+#endif
 
     pcnt_unit_handle_t tachUnits[3] = {};
     esp_timer_handle_t tachTimer    = nullptr;

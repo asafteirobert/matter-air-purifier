@@ -4,7 +4,10 @@
 
 #include <esp_err.h>
 #include <esp_log.h>
+#include <nvs.h>
+#ifndef CONFIG_STANDALONE_MODE
 #include <esp_matter.h>
+#endif
 
 void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver, FanDriver& fanDriver)
 {
@@ -89,8 +92,6 @@ void ButtonDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver, Fa
 
 void ButtonDriver::buttonClickCallback(void *handle, void *userData)
 {
-    using namespace chip::app::Clusters;
-
     ButtonDriver* thisInstance = (ButtonDriver*)userData;
 
     if (thisInstance->displayDriver->getActiveScreen() == DisplayDriver::Screen::Info ||
@@ -102,6 +103,17 @@ void ButtonDriver::buttonClickCallback(void *handle, void *userData)
     }
 
     ESP_LOGI(TAG, "Button click: toggle fan");
+
+#ifdef CONFIG_STANDALONE_MODE
+    // In standalone mode, toggle fan speed directly without Matter
+    uint8_t cur = thisInstance->fanDriver->getFanPercentSetting();
+    uint8_t next = (cur == 0)   ? 33
+                 : (cur <= 33)  ? 66
+                 : (cur <= 66)  ? 100
+                 : 0;
+    thisInstance->fanDriver->setFanPercentSetting(next);
+#else
+    using namespace chip::app::Clusters;
     uint16_t endpointId = thisInstance->fanEndpointId;
     uint32_t clusterId = FanControl::Id;
     uint32_t attributeId = FanControl::Attributes::FanMode::Id;
@@ -116,11 +128,12 @@ void ButtonDriver::buttonClickCallback(void *handle, void *userData)
     esp_matter_attr_val_t val = esp_matter_invalid(NULL);
     esp_matter::attribute::get_val(attribute, &val);
     // Toggle between presets
-    val.val.u8 = (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kOff) ? (uint8_t)FanControl::FanModeEnum::kLow
-               : (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kLow) ? (uint8_t)FanControl::FanModeEnum::kMedium
+    val.val.u8 = (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kOff)    ? (uint8_t)FanControl::FanModeEnum::kLow
+               : (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kLow)    ? (uint8_t)FanControl::FanModeEnum::kMedium
                : (val.val.u8 == (uint8_t)FanControl::FanModeEnum::kMedium) ? (uint8_t)FanControl::FanModeEnum::kHigh
                : (uint8_t)FanControl::FanModeEnum::kOff;
     esp_matter::attribute::update(endpointId, clusterId, attributeId, &val);
+#endif
 }
 
 void ButtonDriver::buttonLongPressInfoCallback(void *handle, void *userData)
@@ -144,7 +157,19 @@ void ButtonDriver::buttonPressUpCallback(void *handle, void *userData)
     if (thisInstance->performFactoryReset)
     {
         ESP_LOGI(TAG, "Starting factory reset");
+#ifdef CONFIG_STANDALONE_MODE
+        // In standalone mode, erase WiFi credentials and reboot
+        nvs_handle_t nvs;
+        if (nvs_open("standalone", NVS_READWRITE, &nvs) == ESP_OK)
+        {
+            nvs_erase_all(nvs);
+            nvs_commit(nvs);
+            nvs_close(nvs);
+        }
+        esp_restart();
+#else
         esp_matter::factory_reset();
+#endif
         thisInstance->performFactoryReset = false;
     }
 }

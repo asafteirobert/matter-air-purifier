@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Air Purifier</title>
+<style>
+:root{
+  --bg:#0f1117;--s:#1a1d27;--s2:#242736;
+  --a:#4f9de8;--g:#64d0a0;
+  --t:#e8eaf0;--m:#8b93a8;
+  --bd:rgba(255,255,255,.07);
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg);color:var(--t);
+  min-height:100vh;padding:24px 16px 48px;
+}
+.w{max-width:420px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:24px;padding:0 4px}
+h1{font-size:1.3rem;font-weight:700}
+.dot{width:10px;height:10px;border-radius:50%;transition:background .3s,box-shadow .3s}
+.dot.on{background:#4caf50;box-shadow:0 0 8px rgba(76,175,80,.6)}
+.dot.ap{background:#ff9800;box-shadow:0 0 8px rgba(255,152,0,.5)}
+.card{background:var(--s);border:1px solid var(--bd);border-radius:var(--r);
+  padding:22px;margin-bottom:14px}
+.lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:1.5px;
+  color:var(--m);font-weight:600;margin-bottom:14px}
+.snum{font-size:4.5rem;font-weight:800;letter-spacing:-3px;line-height:1;
+  background:linear-gradient(135deg,var(--a),var(--g));
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent}
+.sunit{font-size:1.3rem;color:var(--m);font-weight:500}
+.sh{display:flex;align-items:baseline;justify-content:center;gap:4px;
+  margin-bottom:20px}
+input[type=range]{
+  -webkit-appearance:none;width:100%;height:6px;border-radius:3px;
+  outline:none;cursor:pointer;
+  background:linear-gradient(to right,var(--a) var(--v,0%),var(--s2) var(--v,0%));
+  margin-bottom:16px;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:26px;height:26px;border-radius:50%;
+  background:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);
+}
+.modes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.mb{padding:11px 0;border:1px solid var(--bd);border-radius:10px;
+  background:var(--s2);color:var(--m);font-size:.85rem;font-weight:600;
+  cursor:pointer;transition:all .15s;}
+.mb.on{background:var(--a);color:#fff;border-color:var(--a);
+  box-shadow:0 0 16px rgba(79,157,232,.3)}
+.rg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ri{background:var(--s2);border-radius:12px;padding:14px 8px;text-align:center}
+.rv{font-size:1.35rem;font-weight:700;color:var(--g)}
+.rl{font-size:.68rem;color:var(--m);margin-top:4px;text-transform:uppercase}
+.fh{display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:10px}
+.fp{font-size:1.5rem;font-weight:700;color:var(--g)}
+.fp.warn{color:#ff9800}.fp.c{color:#f44336}
+.bt{height:10px;background:var(--s2);border-radius:5px;overflow:hidden}
+.bf{height:100%;border-radius:5px;
+  background:linear-gradient(to right,var(--g),var(--a));transition:width .5s}
+.bf.warn{background:linear-gradient(to right,#ff9800,#ffb74d)}
+.bf.c{background:linear-gradient(to right,#f44336,#ff8a80)}
+.fn{font-size:.8rem;margin-top:8px}
+.fn.warn{color:#ff9800}.fn.c{color:#f44336}
+.row{display:flex;justify-content:space-between;padding:9px 0;
+  border-bottom:1px solid var(--bd);font-size:.875rem}
+.row:last-child{border-bottom:none}
+.row span:last-child{color:var(--m)}
+.row a{color:var(--a);text-decoration:none}
+.ban{padding:12px 16px;border-radius:12px;font-size:.875rem;margin-bottom:14px;
+  background:rgba(79,157,232,.1);border:1px solid rgba(79,157,232,.25);
+  line-height:1.5}
+.wf{display:flex;flex-direction:column;gap:10px}
+.wf input{
+  padding:14px 16px;border-radius:12px;border:1px solid var(--bd);
+  background:var(--s2);color:var(--t);font-size:.95rem;outline:none;
+}
+.wf input:focus{border-color:var(--a)}
+.btn{padding:15px;border-radius:12px;border:none;background:var(--a);
+  color:#fff;font-size:1rem;font-weight:700;cursor:pointer;}
+.btn:hover{opacity:.88}.btn:disabled{opacity:.5;cursor:not-allowed}
+.msg{border-radius:10px;padding:10px 14px;font-size:.85rem;display:none;margin-top:2px}
+.msg.ok{background:rgba(100,208,160,.12);border:1px solid rgba(100,208,160,.3);
+  display:block;color:var(--g)}
+.msg.er{background:rgba(244,67,54,.12);border:1px solid rgba(244,67,54,.3);
+  display:block;color:#f44336}
+.lbl-row{display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:12px}
+.scan-btn{background:none;border:1px solid var(--a);border-radius:8px;
+  color:var(--a);font-size:.8rem;font-weight:600;padding:5px 12px;cursor:pointer;
+  transition:opacity .15s}
+.scan-btn:disabled{opacity:.4;cursor:not-allowed}
+#netlist{margin-bottom:12px;border-radius:10px;overflow:hidden;
+  border:1px solid var(--bd)}
+.net{display:flex;align-items:center;padding:11px 12px;cursor:pointer;
+  transition:background .1s;border-bottom:1px solid var(--bd)}
+.net:last-child{border-bottom:none}
+.net:hover,.net.sel{background:rgba(79,157,232,.12)}
+.net-ssid{font-size:.9rem;flex:1;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;margin-right:10px}
+.scanning{color:var(--m);font-size:.85rem;text-align:center;padding:14px}
+.bars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;flex-shrink:0}
+.bar{width:4px;background:var(--bd);border-radius:1px}
+.bar:nth-child(1){height:4px}.bar:nth-child(2){height:7px}
+.bar:nth-child(3){height:10px}.bar:nth-child(4){height:14px}
+.bar.on{background:var(--a)}
+.spin{width:36px;height:36px;border:3px solid var(--bd);border-top-color:var(--a);
+  border-radius:50%;animation:sp .7s linear infinite;margin:80px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="w"><div id="root"><div class="spin"></div></div></div>
+<script>
+var S={speed:0,rpm1:0,rpm2:0,rpm3:0,filter:0,ap_mode:null,ip:'',mdns:''};
+var pt=null;
+var sliderActive=false;
+var sliderIdleTimer=null;
+
+function q(id){return document.getElementById(id)}
+function mo(v){return v===0?'Off':v<=33?'Low':v<=66?'Med':'High'}
+function ms(m){return{Off:0,Low:33,Med:66,High:100}[m]||0}
+
+function ctl(){
+  var m=mo(S.speed);
+  var fp=Math.round(S.filter);
+  var fc=fp>=100?'c':fp>80?'warn':'';
+  var note=fp>=100?'<p class="fn c">Replace the filters!</p>':
+           fp>80?'<p class="fn warn">Filters nearing end of life</p>':'';
+  return '<header><h1>Air Purifier</h1>'+
+    '<div class="dot on" title="'+S.ip+'"></div></header>'+
+    '<div class="card">'+
+      '<div class="sh"><span class="snum" id="sn">'+S.speed+'</span>'+
+        '<span class="sunit">%</span></div>'+
+      '<div class="lbl">Fan Speed</div>'+
+      '<input type="range" id="sl" min="0" max="100" value="'+S.speed+
+        '" style="--v:'+S.speed+'%">'+
+      '<div class="modes">'+
+        ['Off','Low','Med','High'].map(function(n){
+          return '<button class="mb'+(m===n?' on':'')+'">'+n+'</button>';
+        }).join('')+
+      '</div>'+
+    '</div>'+
+    '<div class="card">'+
+      '<div class="lbl">Fan RPM</div>'+
+      '<div class="rg">'+[1,2,3].map(function(i){
+        return '<div class="ri"><div class="rv">'+S['rpm'+i]+
+          '</div><div class="rl">Fan '+i+'</div></div>';
+      }).join('')+'</div>'+
+    '</div>'+
+    '<div class="card">'+
+      '<div class="fh">'+
+        '<div class="lbl" style="margin:0">Filter Usage</div>'+
+        '<div class="fp '+fc+'">'+fp+'%</div>'+
+      '</div>'+
+      '<div class="bt"><div class="bf '+fc+'" style="width:'+Math.min(100,fp)+'%"></div></div>'+
+      note+
+    '</div>'+
+    '<div class="card">'+
+      '<div class="lbl">Device Info</div>'+
+      '<div class="row"><span>Hostname</span>'+
+        '<span><a href="http://'+S.mdns+'.local">'+S.mdns+'.local</a></span></div>'+
+      '<div class="row"><span>IP Address</span><span>'+S.ip+'</span></div>'+
+    '</div>';
+}
+
+function rssiToSignal(r){return r>=-55?4:r>=-65?3:r>=-75?2:r>=-85?1:0}
+function renderBars(n){
+  var h=['4px','7px','10px','14px'],s='';
+  for(var i=1;i<=4;i++)
+    s+='<span class="bar'+(i<=n?' on':'')+'" style="height:'+h[i-1]+'"></span>';
+  return '<span class="bars">'+s+'</span>';
+}
+
+function scanNetworks(){
+  var list=q('netlist'),btn=q('scanbtn');
+  if(!list)return;
+  if(btn)btn.disabled=true;
+  list.innerHTML='<div class="scanning">Scanning\u2026</div>';
+  fetch('/api/scan').then(function(r){return r.json()}).then(function(nets){
+    if(!nets.length){list.innerHTML='<div class="scanning">No networks found</div>';return;}
+    list.innerHTML=nets.map(function(n){
+      var esc=n.ssid.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+      return '<div class="net" data-ssid="'+esc+'" data-auth="'+n.auth+'">'+
+        '<span class="net-ssid">'+(n.auth?'\uD83D\uDD12 ':'')+esc+'</span>'+
+        renderBars(rssiToSignal(n.rssi))+
+      '</div>';
+    }).join('');
+    list.querySelectorAll('.net').forEach(function(el){
+      el.addEventListener('click',function(){
+        q('ssid').value=el.dataset.ssid;
+        list.querySelectorAll('.net').forEach(function(e){e.classList.remove('sel')});
+        el.classList.add('sel');
+        if(el.dataset.auth==='true')q('pass').focus();
+      });
+    });
+  }).catch(function(){
+    list.innerHTML='<div class="scanning">Scan failed</div>';
+  }).finally(function(){
+    if(btn)btn.disabled=false;
+  });
+}
+
+function setup(){
+  return '<header><h1>Air Purifier Setup</h1>'+
+    '<div class="dot ap"></div></header>'+
+    '<div class="ban">Select your WiFi network below, enter the password, then tap Save.</div>'+
+    '<div class="card">'+
+      '<div class="lbl-row">'+
+        '<div class="lbl" style="margin:0">Available Networks</div>'+
+        '<button class="scan-btn" id="scanbtn">Scan again</button>'+
+      '</div>'+
+      '<div id="netlist"><div class="scanning">Scanning\u2026</div></div>'+
+    '</div>'+
+    '<div class="card">'+
+      '<div class="lbl">WiFi Credentials</div>'+
+      '<div class="wf">'+
+        '<input id="ssid" type="text" placeholder="Network name (SSID)"'+
+          ' autocapitalize="none" autocomplete="off" spellcheck="false">'+
+        '<input id="pass" type="password"'+
+          ' placeholder="Password (leave blank if open)"'+
+          ' autocomplete="new-password">'+
+        '<button class="btn" id="sv">Save &amp; Connect</button>'+
+        '<div class="msg" id="msg"></div>'+
+      '</div>'+
+    '</div>';
+}
+
+function render(){
+  q('root').innerHTML=S.ap_mode?setup():ctl();
+  bind();
+}
+
+function bind(){
+  var sl=q('sl');
+  if(sl){
+    sl.addEventListener('input',function(){
+      sliderActive=true;
+      clearTimeout(sliderIdleTimer);
+      var v=+this.value;
+      this.style.setProperty('--v',v+'%');
+      q('sn').textContent=v;
+      clearTimeout(pt);
+      pt=setTimeout(function(){fanSet(v)},300);
+      sliderIdleTimer=setTimeout(function(){sliderActive=false},2500);
+    });
+    document.querySelectorAll('.mb').forEach(function(b){
+      b.addEventListener('click',function(){fanSet(ms(b.textContent))});
+    });
+  }
+  var scanbtn=q('scanbtn');
+  if(scanbtn){
+    scanbtn.addEventListener('click',scanNetworks);
+    scanNetworks();
+  }
+  var sv=q('sv');
+  if(sv){
+    sv.addEventListener('click',function(){
+      var ssid=(q('ssid').value||'').trim();
+      var pass=q('pass').value||'';
+      var msg=q('msg');
+      if(!ssid){
+        msg.textContent='Please enter the network name.';
+        msg.className='msg er';return;
+      }
+      sv.disabled=true;sv.textContent='Saving\u2026';
+      fetch('/api/wifi',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ssid:ssid,password:pass})
+      }).then(function(r){
+        if(r.ok){
+          msg.textContent='Saved! The device will now restart and connect.';
+          msg.className='msg ok';
+        } else { throw 0; }
+      }).catch(function(){
+        msg.textContent='Error saving credentials. Please try again.';
+        msg.className='msg er';
+        sv.disabled=false;sv.textContent='Save \u0026 Connect';
+      });
+    });
+  }
+}
+
+function fanSet(v){
+  fetch('/api/fan',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({speed:v})
+  }).then(poll).catch(function(){});
+}
+
+function poll(){
+  fetch('/api/status')
+    .then(function(r){return r.json()})
+    .then(function(d){
+      var wasAP=S.ap_mode;
+      S=d;
+      if(!sliderActive&&(!d.ap_mode||wasAP!==d.ap_mode))render();
+    })
+    .catch(function(){});
+}
+
+poll();
+setInterval(poll,2000);
+</script>
+</body>
+</html>

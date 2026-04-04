@@ -4,17 +4,22 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "ButtonDriver.hpp"
+#include "FanDriver.hpp"
+#include "DisplayDriver.hpp"
+#include "Utils.hpp"
+
+#ifdef CONFIG_STANDALONE_MODE
+
+#include "StandaloneMode.hpp"
+
+#else // !CONFIG_STANDALONE_MODE
+
 #include <esp_matter.h>
 #include <esp_matter_console.h>
 #include <esp_matter_ota.h>
 
 #include "CliCommands.hpp"
-
-#include "ButtonDriver.hpp"
-#include "FanDriver.hpp"
-#include "DisplayDriver.hpp"
-
-#include "Utils.hpp"
 
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD
 #include <platform/ESP32/OpenthreadLauncher.h>
@@ -45,12 +50,21 @@ using namespace esp_matter::attribute;
 using namespace esp_matter::endpoint;
 using namespace chip::app::Clusters;
 
+#endif // CONFIG_STANDALONE_MODE
+
 static const char *TAG = "app_main";
-constexpr auto k_timeout_seconds = 300;
 
 ButtonDriver buttonDriver;
 FanDriver fanDriver;
 DisplayDriver displayDriver;
+
+#ifdef CONFIG_STANDALONE_MODE
+StandaloneMode standaloneMode;
+#else
+constexpr auto k_timeout_seconds = 300;
+#endif
+
+#ifndef CONFIG_STANDALONE_MODE
 
 #ifdef CONFIG_ENABLE_SET_CERT_DECLARATION_API
 extern const uint8_t cd_start[] asm("_binary_certification_declaration_der_start");
@@ -234,26 +248,65 @@ static void signalTimerCb(void * /*arg*/)
 #endif
 }
 
-extern "C" void app_main()
-{
-    esp_err_t err = ESP_OK;
+#endif // !CONFIG_STANDALONE_MODE
 
-    // Initialize the ESP NVS layer
-    err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+// ── Shared startup helpers ────────────────────────────────────────────────────
+
+static void initNVS()
+{
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
         ESP_ERROR_CHECK(nvs_flash_erase());
         err = nvs_flash_init();
     }
     ESP_ERROR_CHECK(err);
+}
 
-    // Switch to internal antenna
-    // Activate RF switch
+static void initAntenna()
+{
+    // Activate RF switch (active LOW)
     gpio_set_direction(ANTENNA_ENABLE_GPIO, GPIO_MODE_OUTPUT);
-    gpio_set_level(ANTENNA_ENABLE_GPIO, 0); //active low
-
+    gpio_set_level(ANTENNA_ENABLE_GPIO, 0);
     // Select internal antenna
     gpio_set_direction(ANTENNA_CONFIG_GPIO, GPIO_MODE_OUTPUT);
     gpio_set_level(ANTENNA_CONFIG_GPIO, 0);
+}
+
+// ── Standalone entry point ────────────────────────────────────────────────────
+
+#ifdef CONFIG_STANDALONE_MODE
+extern "C" void app_main()
+{
+    initNVS();
+    initAntenna();
+
+    displayDriver.init();
+    displayDriver.drawSplashScreen();
+
+    buttonDriver.init(0, displayDriver, fanDriver);
+    fanDriver.init(0, displayDriver);
+
+    standaloneMode.init(fanDriver, displayDriver);
+
+    ESP_LOGI(TAG, "Standalone mode running – AP=%d  IP=%s",
+             standaloneMode.isAPMode(), standaloneMode.isAPMode() ? "192.168.4.1" : "");
+
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    displayDriver.startTask();
+    vTaskDelete(nullptr);
+}
+#else // !CONFIG_STANDALONE_MODE
+
+// ── Matter entry point ────────────────────────────────────────────────────────
+
+extern "C" void app_main()
+{
+    esp_err_t err = ESP_OK;
+    (void)err;
+
+    initNVS();
+    initAntenna();
 
     displayDriver.init();
     displayDriver.drawSplashScreen();
@@ -393,3 +446,5 @@ extern "C" void app_main()
     displayDriver.startTask();
     vTaskDelete(nullptr);
 }
+
+#endif // !CONFIG_STANDALONE_MODE

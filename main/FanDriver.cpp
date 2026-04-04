@@ -1,9 +1,12 @@
 #include "FanDriver.hpp"
 
 #include <esp_log.h>
+#ifndef CONFIG_STANDALONE_MODE
 #include <esp_matter.h>
+#endif
 #include <nvs.h>
 
+#ifndef CONFIG_STANDALONE_MODE
 // ── Range mapping for kOffLowMedHigh (Matter spec §4.4.6.3.1 / §4.4.6.6.1) ───
 //
 //  PercentSetting / SpeedSetting (SpeedMax=100, so both are identical values):
@@ -33,7 +36,7 @@ static uint8_t fanModeDefaultPercent(uint8_t fanMode)
     }
 }
 
-// ── Helpers to update single attributes ────────
+// ── Helpers to update single attributes ──────── (Matter-only)
 
 static void updateAttrU8(uint16_t endpoint, uint32_t cluster, uint32_t attr, uint8_t newVal)
 {
@@ -51,7 +54,7 @@ static void updateAttrNullableU8(uint16_t endpoint, uint32_t cluster, uint32_t a
     esp_matter_attr_val_t v = esp_matter_nullable_uint8(nullable<uint8_t>(newVal));
     esp_matter::attribute::update(endpoint, cluster, attr, &v);
 }
-
+#endif // !CONFIG_STANDALONE_MODE
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -147,6 +150,7 @@ void FanDriver::init(uint16_t fanEndpointId, DisplayDriver& displayDriver)
     this->displayDriver->setFilterUsage(this->filterUsageCounter);
 }
 
+#ifndef CONFIG_STANDALONE_MODE
 // ── Sync state from Matter NVS on startup ────────────────────────────────────
 
 void FanDriver::syncFromMatter()
@@ -178,6 +182,7 @@ void FanDriver::syncFromMatter()
     updateAttrU8(this->fanEndpointId, FC, FanControl::Attributes::SpeedCurrent::Id, this->fanPercentSetting);
     this->updatingAttributesInCallback = false;
 }
+#endif // !CONFIG_STANDALONE_MODE
 
 // ── Tachometer sampling ───────────────────────────────────────────────────────
 
@@ -196,6 +201,19 @@ void FanDriver::setFanPercentSetting(uint8_t newSetting)
     this->applyFanState();
 }
 
+void FanDriver::getRPM(uint32_t &rpm1, uint32_t &rpm2, uint32_t &rpm3) const
+{
+    rpm1 = this->lastRPM[0];
+    rpm2 = this->lastRPM[1];
+    rpm3 = this->lastRPM[2];
+}
+
+uint16_t FanDriver::getFilterPercent() const
+{
+    if (FILTER_MAX_USAGE == 0) return 0;
+    return (uint16_t)((this->filterUsageCounter * 100ULL) / FILTER_MAX_USAGE);
+}
+
 void FanDriver::readAndSendRpm()
 {
     int counts[3];
@@ -204,9 +222,12 @@ void FanDriver::readAndSendRpm()
         pcnt_unit_get_count(this->tachUnits[i], &counts[i]);
         pcnt_unit_clear_count(this->tachUnits[i]);
     }
-    // 4-pin fans emit 2 pulses per revolution; sampled over 1 second.
-    // RPM = (pulses / 2) * 60 = pulses * 30
-    this->displayDriver->setRPM(counts[0] * 30 * 1000 / RPM_READ_INTERVAL_MS, counts[1] * 30 * 1000 / RPM_READ_INTERVAL_MS, counts[2] * 30 * 1000 / RPM_READ_INTERVAL_MS);
+    // 4-pin fans emit 2 pulses per revolution; sampled over 2 seconds.
+    // RPM = (pulses / 2) * (60 / interval_s) = pulses * 30 * 1000 / interval_ms
+    this->lastRPM[0] = (uint32_t)(counts[0] * 30 * 1000 / RPM_READ_INTERVAL_MS);
+    this->lastRPM[1] = (uint32_t)(counts[1] * 30 * 1000 / RPM_READ_INTERVAL_MS);
+    this->lastRPM[2] = (uint32_t)(counts[2] * 30 * 1000 / RPM_READ_INTERVAL_MS);
+    this->displayDriver->setRPM(this->lastRPM[0], this->lastRPM[1], this->lastRPM[2]);
 
     // Accumulate all pulse counts into the filter usage counter
     this->filterUsageCounter += (uint64_t)(counts[0] + counts[1] + counts[2]);
@@ -246,8 +267,9 @@ void FanDriver::resetFilterCounter()
     ESP_LOGI(TAG, "Filter usage counter reset");
 }
 
-// ── Attribute update callback ─────────────────────────────────────────────────
+// ── Attribute update callback (Matter only) ───────────────────────────────────
 
+#ifndef CONFIG_STANDALONE_MODE
 esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type,
                                      uint16_t endpoint_id,
                                      uint32_t cluster_id,
@@ -335,6 +357,7 @@ esp_err_t FanDriver::attributeUpdate(esp_matter::attribute::callback_type_t type
 
     return ESP_OK;
 }
+#endif // !CONFIG_STANDALONE_MODE
 
 // ── Apply hardware state ──────────────────────────────────────────────────────
 
